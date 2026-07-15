@@ -50,6 +50,39 @@ Khi mở lại iMetriK, app có thể tự kết nối thư mục gần nhất n
 - 📤 Xuất trang hiện tại thành PNG hoặc toàn bộ báo cáo thành PDF A4.
 - 💾 Lưu và tải report template `.json` để dùng lại với bộ dữ liệu khác.
 
+## 🧩 Giải thích các chức năng trên màn hình
+
+### Thanh công cụ phía trên
+
+| Nút | Chức năng | Cách dùng |
+|---|---|---|
+| **Import tệp** | Chọn thủ công một hoặc nhiều file Excel/CSV. | Dùng khi bạn chỉ muốn phân tích một số file cụ thể. |
+| **Quét thư mục** | Đọc các file Excel/CSV trong một thư mục. | Dùng khi dữ liệu nằm trong một folder và muốn app cập nhật lại khi file thay đổi. Bấm lại nút này để chuyển sang folder khác. |
+| **Gợi ý** | Tự tạo một bố cục dashboard ban đầu từ dữ liệu đã import. | Dùng để có nhanh vài visual mẫu rồi chỉnh tiếp theo nhu cầu. |
+| **Lưu** | Lưu cấu trúc report hiện tại thành file `.json`. | Lưu visual, page, bộ lọc và cấu hình report; không lưu bản sao dữ liệu Excel/CSV. |
+| **Mở** | Mở một report template `.json` đã lưu. | Sau đó import bộ dữ liệu phù hợp để dùng lại bố cục. |
+| **Trình chiếu** | Mở dashboard ở chế độ trình bày toàn màn hình. | Dùng khi trình bày nội bộ hoặc chia sẻ màn hình. |
+| **PNG** | Xuất page đang xem thành ảnh PNG. | Phù hợp để gửi nhanh một trang qua chat hoặc email. |
+| **PDF** | Xuất toàn bộ report thành PDF khổ A4. | Phù hợp để gửi báo cáo hoặc lưu trữ. |
+| **🌙 / ☀️** | Đổi Light theme và Dark theme. | Chọn giao diện dễ nhìn hơn theo môi trường làm việc. |
+| **VN / EN** | Đổi ngôn ngữ giao diện. | Chuyển nhanh giữa tiếng Việt và English. |
+
+### Các khu vực bên trái
+
+- **📦 Bộ dữ liệu**: hiển thị các file hoặc dataset đang được nạp, cùng số dòng đã đọc.
+- **🔤 Cột dữ liệu (Fields)**: danh sách các cột trong dữ liệu. Bấm vào một cột để tạo visual nhanh, hoặc kéo cột vào visual đang chọn.
+- **🎛️ Bộ lọc (Slicers)**: chọn giá trị muốn xem, ví dụ khu vực, sản phẩm, ngày hoặc người phụ trách. Bấm **Xóa lọc** để đưa dashboard về trạng thái ban đầu.
+- **✅ Chất lượng dữ liệu**: hiển thị cảnh báo khi iMetriK phát hiện vấn đề lúc ghép hoặc đọc dữ liệu. Nếu thấy `No warnings` nghĩa là chưa có cảnh báo trong lần import đó.
+- **📁 Mẫu báo cáo (Presets)**: khu vực để mở nhanh các report template `.json` trong một folder. Nút **Folder** dùng để chọn nơi chứa các mẫu báo cáo.
+
+### Khu vực dashboard ở giữa
+
+- Bấm **+** để thêm visual mới.
+- Kéo cạnh hoặc góc visual để resize.
+- Kéo visual để sắp xếp lại bố cục.
+- Chọn visual để mở **Inspector**, nơi chỉnh loại biểu đồ, measure, cách aggregate, series, định dạng tiền tệ và bảng màu.
+- Mỗi visual có thể chọn palette riêng để dashboard sinh động hơn mà vẫn giữ theme tổng thể.
+
 ## 🧭 Luồng sử dụng gợi ý
 
 1. **Import**: nạp file dữ liệu.

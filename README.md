@@ -27,6 +27,15 @@ cd imetrik
 
 Không có `npm install`, không có build step, không có database cần cấu hình.
 
+### Quét một thư mục, rồi đổi sang thư mục khác
+
+1. Bấm **📁 Quét thư mục** và chọn thư mục chứa các file Excel/CSV.
+2. iMetriK sẽ đọc các file phù hợp trong thư mục và nạp chúng vào dashboard.
+3. Khi muốn xem thư mục khác, bấm lại **📁 Quét thư mục** rồi chọn thư mục mới.
+4. Dữ liệu của thư mục mới sẽ thay cho dữ liệu đang hiển thị; bạn không cần đóng hoặc mở lại app.
+
+Khi mở lại iMetriK, app có thể tự kết nối thư mục gần nhất nếu Chrome/Edge vẫn còn quyền truy cập. Nếu không muốn dùng folder scan, bạn luôn có thể quay lại **Import files** để chọn file thủ công.
+
 ## ✨ Có gì trong dashboard?
 
 - 📥 Import một hoặc nhiều file Excel/CSV.
@@ -97,6 +106,12 @@ tests/                     Smoke checks cho repo
 - Folder scan và lưu report trực tiếp vào thư mục cần Chrome/Edge hỗ trợ File System Access API.
 - Với thư mục OneDrive, hãy chọn **Always keep on this device** để file luôn sẵn sàng offline.
 - Nếu trình duyệt không cho cấp quyền thư mục, iMetriK vẫn dùng được bằng cách import file thủ công.
+
+## ✅ Trạng thái hiện tại
+
+iMetriK hiện đã đủ ổn để chia sẻ cho nhóm dùng thử và bắt đầu lấy feedback thực tế. Bản này tập trung vào trải nghiệm offline, thao tác trực quan và khả năng clone về để đổi logo/màu thương hiệu.
+
+Khi mọi người dùng thử, các feedback hữu ích nhất sẽ là: bước nào khó hiểu, visual nào cần bổ sung, file dữ liệu nào đọc chưa đúng, thao tác nào còn chậm hoặc gây nhầm lẫn. Những phản hồi đó sẽ là cơ sở tốt để ưu tiên vòng cải tiến tiếp theo.
 
 ## 🧪 Kiểm tra cho người phát triển
 

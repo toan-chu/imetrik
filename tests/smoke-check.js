@@ -121,6 +121,9 @@ if (!mainText.includes("IMK.isAbortError") || !mainText.includes('IMK.i18n.t("fo
 if (!fs.readFileSync(path.join(root, "src/view/slicers.js"), "utf8").includes("slicerOpen")) throw new Error("Slicer open state persistence is missing");
 if (!mainText.includes("item.draggable = true") || !tileText.includes("useField")) throw new Error("Fields interaction is missing");
 if (!configText.includes("ocean:") || !configText.includes("spectrum:")) throw new Error("Expanded chart palettes are missing");
+const scannerText = fs.readFileSync(path.join(root, "src/data/folder-scanner.js"), "utf8");
+if (scannerText.includes("if (await restoreSaved(onFiles, true)) return true;")) throw new Error("Folder chooser must allow selecting a different folder");
+if (!scannerText.includes("lastSeen = {};")) throw new Error("Folder switch must reset last-seen file state");
 for (const fixture of ["sample-data/demo-sales-north.xlsx", "sample-data/demo-sales-south.xlsx"]) {
   if (!fs.existsSync(path.join(root, fixture))) throw new Error(`Synthetic sample fixture is missing: ${fixture}`);
 }

@@ -55,9 +55,9 @@
 
   async function chooseFolder(onFiles) {
     if (!window.showDirectoryPicker) throw new Error(IMK.i18n.t("folderUnsupported"));
-    if (await restoreSaved(onFiles, true)) return true;
     dirHandle = await window.showDirectoryPicker({ mode: "read" });
     await saveHandle(dirHandle);
+    lastSeen = {};
     return refresh(onFiles, true);
   }
 

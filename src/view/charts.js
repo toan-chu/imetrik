@@ -4,8 +4,18 @@
   var C = window.APP_CONFIG;
   var instances = {};
 
-  function color(index, alpha) {
-    var hex = C.CATEGORICAL_DEFAULT[index % C.CATEGORICAL_DEFAULT.length];
+  Chart.defaults.font.family = "'Montserrat', sans-serif";
+  Chart.defaults.font.size = 11;
+
+  function palette(tile) {
+    var key = tile.palette && C.VISUAL_PALETTES[tile.palette] ? tile.palette : "auto";
+    var theme = IMK.Store.state.theme === "dark" ? "dark" : "light";
+    return C.VISUAL_PALETTES[key][theme];
+  }
+
+  function color(tile, index, alpha) {
+    var colors = palette(tile);
+    var hex = colors[index % colors.length];
     if (alpha == null || alpha === 1) return hex;
     var n = parseInt(hex.slice(1), 16);
     return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + alpha + ")";
@@ -25,12 +35,15 @@
   }
 
   function chartOptions(tile, disableAnimation) {
+    var styles = getComputedStyle(document.body);
+    var muted = styles.getPropertyValue("--muted").trim();
+    var line = styles.getPropertyValue("--line").trim();
     return {
       responsive: true,
       maintainAspectRatio: false,
       animation: disableAnimation ? false : { duration: 240 },
       plugins: {
-        legend: { display: !!tile.series || tile.type === "donut", position: tile.type === "donut" ? "right" : "top" },
+        legend: { display: !!tile.series || tile.type === "donut", position: tile.type === "donut" ? "right" : "top", labels: { color: muted, usePointStyle: true, boxWidth: 7, boxHeight: 7 } },
         tooltip: { callbacks: { label: function (ctx) {
           var val = ctx.parsed;
           if (typeof val === "object") val = ctx.chart.options.indexAxis === "y" ? val.x : val.y;
@@ -45,8 +58,8 @@
         IMK.renderAll();
       },
       scales: tile.type === "donut" ? undefined : {
-        x: { title: { display: true, text: tile.type === "hbar" ? tile.measure : tile.dim }, grid: { display: false } },
-        y: { title: { display: true, text: tile.type === "hbar" ? tile.dim : (tile.measure || IMK.i18n.t("countRows")) }, beginAtZero: true, ticks: { callback: function (v) { return IMK.i18n.number(v, { compact: true }); } } }
+        x: { title: { display: true, text: tile.type === "hbar" ? tile.measure : tile.dim, color: muted }, ticks: { color: muted, maxRotation: 35, minRotation: 0 }, border: { color: line }, grid: { display: false } },
+        y: { title: { display: true, text: tile.type === "hbar" ? tile.dim : (tile.measure || IMK.i18n.t("countRows")), color: muted }, beginAtZero: true, ticks: { color: muted, callback: function (v) { return IMK.i18n.number(v, { compact: true }); } }, border: { display: false }, grid: { color: line, lineWidth: 0.65 } }
       }
     };
   }
@@ -54,18 +67,18 @@
   function applyColors(tile, data) {
     data.datasets.forEach(function (ds, index) {
       if (tile.type === "line" || tile.type === "area" || tile.type === "combo") {
-        ds.borderColor = color(index);
-        ds.backgroundColor = tile.type === "area" ? color(index, 0.15) : color(index, 0.08);
+        ds.borderColor = color(tile, index);
+        ds.backgroundColor = tile.type === "area" ? color(tile, index, 0.18) : color(tile, index, 0.08);
         ds.fill = tile.type === "area";
         ds.tension = 0.32;
         ds.borderWidth = 2;
       } else if (tile.type === "donut") {
-        ds.backgroundColor = data.labels.map(function (_, i) { return color(i); });
-        ds.borderColor = "#fff";
+        ds.backgroundColor = data.labels.map(function (_, i) { return color(tile, i); });
+        ds.borderColor = getComputedStyle(document.body).getPropertyValue("--surface").trim();
         ds.borderWidth = 2;
       } else {
-        ds.backgroundColor = color(index, 0.82);
-        ds.borderRadius = 4;
+        ds.backgroundColor = color(tile, index, 0.86);
+        ds.borderRadius = 3;
         ds.maxBarThickness = 48;
       }
     });
@@ -83,7 +96,7 @@
     applyColors(tile, data);
     if (tile.type === "sbar") data.datasets.forEach(function (d) { d.stack = "s"; });
     var type = tile.type === "donut" ? "doughnut" : tile.type === "line" || tile.type === "area" ? "line" : "bar";
-    var options = chartOptions(tile, summary.labels.length * data.datasets.length > C.ANIM_MAX_POINTS);
+    var options = chartOptions(tile, document.body.classList.contains("exporting") || summary.labels.length * data.datasets.length > C.ANIM_MAX_POINTS);
     if (tile.type === "hbar") options.indexAxis = "y";
     if (tile.type === "sbar") { options.scales.x.stacked = true; options.scales.y.stacked = true; }
     destroy(tile.id);
@@ -105,8 +118,12 @@
     destroy(tile.id);
     instances[tile.id] = new Chart(canvas, {
       type: "scatter",
-      data: { datasets: Object.keys(groups).map(function (key, index) { return { label: key, data: groups[key], backgroundColor: color(index, 0.66), pointRadius: 3 }; }) },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: !!tile.series } }, scales: { x: { title: { display: true, text: tile.dim } }, y: { title: { display: true, text: tile.measure } } } }
+      data: { datasets: Object.keys(groups).map(function (key, index) { return { label: key, data: groups[key], backgroundColor: color(tile, index, 0.72), pointRadius: 3 }; }) },
+      options: (function () {
+        var options = chartOptions(tile, rows.length > C.ANIM_MAX_POINTS);
+        options.plugins.legend.display = !!tile.series;
+        return options;
+      })()
     });
   }
 
@@ -141,7 +158,7 @@
   function renderKpi(el, dataset, tile) {
     var rows = IMK.Query.filteredRows(dataset);
     var value = IMK.Measures.aggregate(rows, tile.measure, tile.agg);
-    el.innerHTML = "<div class='kpi-card'><span>" + IMK.escape(tile.title || IMK.i18n.t("kpiTile")) + "</span><strong>" + formatValue(tile, value) + "</strong><small>" + (tile.agg || "count").toUpperCase() + "</small></div>";
+    el.innerHTML = "<div class='kpi-card'><span>" + IMK.escape(tile.measure || IMK.i18n.t("countRows")) + "</span><strong>" + formatValue(tile, value) + "</strong><small>" + (tile.agg || "count").toUpperCase() + "</small></div>";
   }
 
   IMK.Charts = {

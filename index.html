@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>iMetriK - Offline BI Dashboard</title>
+  <link rel="icon" href="assets/logo-iMetriK.png">
   <link rel="stylesheet" href="vendor/gridstack/gridstack.min.css">
   <link rel="stylesheet" href="src/view/styles.css">
 </head>
@@ -11,20 +12,19 @@
   <header class="topbar">
     <div class="brand" aria-label="iMetriK">
       <img id="brandLogo" alt="iMetriK logo">
-      <span class="wordmark"><span>i</span><b>M</b><span>etri</span><b>K</b></span>
     </div>
     <input id="reportName" class="report-name" value="Untitled report" aria-label="Report name">
     <nav id="pageTabs" class="page-tabs" aria-label="Report pages"></nav>
     <div class="toolbar">
-      <button id="btnImport" class="btn" title="Import files">Import</button>
-      <button id="btnFolder" class="btn" title="Scan folder">Folder</button>
-      <button id="btnAuto" class="btn" title="Auto suggest visuals" disabled>Auto</button>
-      <button id="btnSave" class="btn" title="Save report" disabled>Save</button>
-      <button id="btnLoad" class="btn" title="Load report">Load</button>
-      <button id="btnPresent" class="btn" title="Present" disabled>Present</button>
-      <button id="btnPng" class="btn" title="Export current page as PNG" disabled>PNG</button>
-      <button id="btnPdf" class="btn primary" title="Export PDF" disabled>PDF</button>
-      <button id="btnTheme" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+      <button id="btnImport" class="btn accent" data-i18n-title="importFiles" title="Import files"><i data-lucide="upload" aria-hidden="true"></i><span data-i18n="importFiles">Import</span></button>
+      <button id="btnFolder" class="btn" data-i18n-title="scanFolder" title="Scan folder"><i data-lucide="folder-search" aria-hidden="true"></i><span data-i18n="scanFolder">Folder</span></button>
+      <button id="btnAuto" class="btn" data-i18n-title="autoSuggest" title="Auto suggest visuals" disabled><i data-lucide="wand-sparkles" aria-hidden="true"></i><span data-i18n="autoSuggest">Auto</span></button>
+      <button id="btnSave" class="btn" data-i18n-title="saveReport" title="Save report" disabled><i data-lucide="save" aria-hidden="true"></i><span data-i18n="saveReport">Save</span></button>
+      <button id="btnLoad" class="btn" data-i18n-title="loadReport" title="Load report"><i data-lucide="folder-up" aria-hidden="true"></i><span data-i18n="loadReport">Load</span></button>
+      <button id="btnPresent" class="btn" data-i18n-title="present" title="Present" disabled><i data-lucide="presentation" aria-hidden="true"></i><span data-i18n="present">Present</span></button>
+      <button id="btnPng" class="btn" data-i18n-title="exportPng" title="Export current page as PNG" disabled><i data-lucide="image-down" aria-hidden="true"></i><span data-i18n="exportPng">PNG</span></button>
+      <button id="btnPdf" class="btn primary" data-i18n-title="exportPdf" title="Export PDF" disabled><i data-lucide="file-down" aria-hidden="true"></i><span data-i18n="exportPdf">PDF</span></button>
+      <button id="btnTheme" class="icon-btn" title="Toggle theme" aria-label="Toggle theme"><i data-lucide="moon" aria-hidden="true"></i></button>
       <button id="btnLang" class="icon-btn" title="Language" aria-label="Language">VN</button>
     </div>
   </header>
@@ -39,36 +39,36 @@
     <aside class="sidebar">
       <section class="panel">
         <div class="panel-head">
-          <h2>Datasets</h2>
+          <h2 data-i18n="datasets">Datasets</h2>
           <span id="datasetCount" class="count">0</span>
         </div>
         <div id="datasetList" class="dataset-list"></div>
       </section>
       <section class="panel">
         <div class="panel-head">
-          <h2>Fields</h2>
+          <h2 data-i18n="fieldsPanel">Fields</h2>
           <span id="fieldCount" class="count">0</span>
         </div>
         <div id="fieldList" class="field-list"></div>
       </section>
       <section class="panel">
         <div class="panel-head">
-          <h2>Slicers</h2>
-          <button id="btnResetFilters" class="link-button">Reset</button>
+          <h2 data-i18n="slicers">Slicers</h2>
+          <button id="btnResetFilters" class="link-button" data-i18n="reset">Reset</button>
         </div>
         <div id="slicerList"></div>
       </section>
       <section class="panel">
         <div class="panel-head">
-          <h2>Data quality</h2>
+          <h2 data-i18n="dataQuality">Data quality</h2>
           <span id="warningCount" class="count">0</span>
         </div>
         <div id="warningList" class="warning-list"></div>
       </section>
       <section class="panel">
         <div class="panel-head">
-          <h2>Presets</h2>
-          <button id="btnReportsFolder" class="link-button">Folder</button>
+          <h2 data-i18n="presets">Presets</h2>
+          <button id="btnReportsFolder" class="link-button" data-i18n="folder">Folder</button>
         </div>
         <div id="presetList" class="preset-list"></div>
       </section>
@@ -76,15 +76,22 @@
 
     <section class="canvas-shell">
       <div id="emptyState" class="empty-state">
-        <div class="empty-mark">iM</div>
-        <h1>Build a local BI report</h1>
-        <p>Import Excel or CSV files, scan a folder, then shape pages for presentation. Your data stays in this browser.</p>
+        <div class="empty-logo"><img id="emptyLogo" alt="" aria-hidden="true"></div>
+        <h1 data-i18n="emptyTitle">Build a local BI report</h1>
+        <p data-i18n="emptyDescription">Import Excel or CSV files, scan a folder, then shape pages for presentation. Your data stays in this browser.</p>
         <div class="empty-actions">
-          <button id="btnImportEmpty" class="btn primary">Import files</button>
-          <button id="btnFolderEmpty" class="btn">Scan folder</button>
+          <button id="btnImportEmpty" class="btn accent" data-i18n="importFiles">Import files</button>
+          <button id="btnFolderEmpty" class="btn" data-i18n="scanFolder">Scan folder</button>
         </div>
       </div>
       <section id="board" class="board" hidden>
+        <div class="board-toolbar">
+          <div class="board-page-label">
+            <span data-i18n="page">Page</span>
+            <strong id="boardPageName">Page 1</strong>
+          </div>
+          <button id="btnAddVisual" class="btn accent" type="button"><i data-lucide="plus" aria-hidden="true"></i><span data-i18n="addVisual">Add visual</span></button>
+        </div>
         <div id="pageCanvas" class="page-canvas grid-stack"></div>
       </section>
     </section>
@@ -102,6 +109,8 @@
     </form>
   </dialog>
 
+  <dialog id="visualDialog" class="dialog visual-dialog" aria-labelledby="visualDialogTitle"></dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="exportStage" class="export-stage"></div>
 
@@ -110,7 +119,10 @@
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="vendor/html2canvas.min.js"></script>
   <script src="vendor/gridstack/gridstack-all.js"></script>
+  <script src="vendor/lucide/lucide.min.js"></script>
+  <script src="assets/logo-iMetriK-data.js"></script>
   <script src="config.js"></script>
+  <script src="src/view/icons.js"></script>
   <script src="src/i18n/strings.js"></script>
   <script src="src/i18n/format.js"></script>
   <script src="src/data/merge-engine.js"></script>

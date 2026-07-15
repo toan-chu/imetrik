@@ -10,6 +10,7 @@
       this.lang = lang === "en" ? "en" : "vi";
       this.currency = this.lang === "vi" ? { symbol: "đ", position: "suffix", code: "VND" } : { symbol: "$", position: "prefix", code: "USD" };
       document.documentElement.lang = this.lang;
+      this.applyStatic();
     },
     t: function (key) {
       return (IMK.STRINGS[this.lang] && IMK.STRINGS[this.lang][key]) || IMK.STRINGS.vi[key] || key;
@@ -33,6 +34,16 @@
     },
     time: function (date) {
       return new Intl.DateTimeFormat(this.locale(), { hour: "2-digit", minute: "2-digit" }).format(date || new Date());
+    },
+    applyStatic: function () {
+      document.querySelectorAll("[data-i18n]").forEach(function (el) {
+        el.textContent = IMK.i18n.t(el.dataset.i18n);
+      });
+      document.querySelectorAll("[data-i18n-title]").forEach(function (el) {
+        var label = IMK.i18n.t(el.dataset.i18nTitle);
+        el.title = label;
+        if (el.getAttribute("aria-label")) el.setAttribute("aria-label", label);
+      });
     }
   };
 })();

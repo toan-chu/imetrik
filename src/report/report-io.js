@@ -35,7 +35,7 @@
   }
 
   async function chooseReportsFolder() {
-    if (!window.showDirectoryPicker) throw new Error("Preset gallery requires Chrome or Edge");
+    if (!window.showDirectoryPicker) throw new Error(IMK.i18n.t("folderUnsupported"));
     reportDirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
     var box = document.getElementById("presetList");
     box.innerHTML = "";

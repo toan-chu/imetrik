@@ -16,6 +16,39 @@
     IMK.toastTimer = setTimeout(function () { toast.className = "toast"; }, 2800);
   };
 
+  IMK.isAbortError = function (err) {
+    return !!err && (err.name === "AbortError" || /aborted|cancelled|canceled/i.test(err.message || ""));
+  };
+
+  IMK.errorMessage = function (err) {
+    if (IMK.isAbortError(err)) return IMK.i18n.t("folderCancelled");
+    return err && err.message ? err.message : IMK.i18n.t("operationFailed");
+  };
+
+  async function runBusy(button, action, startKey, doneKey) {
+    if (button.dataset.busy === "true") return;
+    var original = button.innerHTML;
+    button.dataset.busy = "true";
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.innerHTML = IMK.Icons.markup("loader-circle", IMK.i18n.t(startKey)) + IMK.i18n.t(startKey);
+    IMK.Icons.refresh();
+    IMK.toast(IMK.i18n.t(startKey));
+    try {
+      var result = await action();
+      IMK.toast(IMK.i18n.t(doneKey));
+      return result;
+    } catch (err) {
+      IMK.toast(IMK.errorMessage(err), "err");
+    } finally {
+      button.dataset.busy = "false";
+      button.removeAttribute("aria-busy");
+      button.innerHTML = original;
+      button.disabled = !IMK.Store.activeDataset();
+      IMK.Icons.refresh();
+    }
+  }
+
   async function sheetResolver(fileName, sheets) {
     var dialog = document.getElementById("sheetDialog");
     var choices = document.getElementById("sheetChoices");
@@ -42,7 +75,7 @@
       IMK.renderAll();
       IMK.toast(IMK.i18n.t("importDone") + ": " + parsed.length + " file(s)");
     } catch (err) {
-      IMK.toast(err.message, "err");
+      IMK.toast(IMK.errorMessage(err), "err");
     }
   }
 
@@ -65,17 +98,25 @@
 
   IMK.renderAll = function () {
     var dataset = IMK.Store.activeDataset();
+    if (IMK.i18n.applyStatic) IMK.i18n.applyStatic();
     document.body.dataset.theme = IMK.Store.state.theme;
     document.getElementById("brandLogo").src = window.APP_CONFIG.LOGO;
+    document.getElementById("emptyLogo").src = window.APP_CONFIG.LOGO;
     document.getElementById("reportName").value = IMK.Store.state.reportName;
     document.getElementById("emptyState").hidden = !!dataset;
     document.getElementById("board").hidden = !dataset;
-    ["btnAuto", "btnSave", "btnPresent", "btnPng", "btnPdf"].forEach(function (id) { document.getElementById(id).disabled = !dataset; });
+    ["btnAuto", "btnSave", "btnPresent", "btnPng", "btnPdf"].forEach(function (id) {
+      var button = document.getElementById(id);
+      button.disabled = !dataset || button.dataset.busy === "true";
+    });
     document.getElementById("btnLang").textContent = IMK.i18n.lang === "vi" ? "VN" : "EN";
+    document.getElementById("btnTheme").innerHTML = IMK.Icons.markup(IMK.Store.state.theme === "dark" ? "sun" : "moon", "Toggle theme");
     document.getElementById("datasetStatus").textContent = dataset ? dataset.name + " · " + IMK.i18n.number(dataset.rows.length) + " " + IMK.i18n.t("rows") : IMK.i18n.t("noData");
+    document.getElementById("boardPageName").textContent = IMK.Store.activePage().name;
     IMK.Pages.renderTabs();
     renderSidebar(dataset);
     if (dataset) IMK.Tiles.render();
+    IMK.Icons.refresh();
   };
 
   function renderSidebar(dataset) {
@@ -93,9 +134,20 @@
     document.getElementById("datasetCount").textContent = IMK.Store.state.datasets.length;
     document.getElementById("fieldCount").textContent = dataset ? dataset.columns.length : 0;
     if (dataset) dataset.columns.forEach(function (c) {
-      var item = document.createElement("div");
+      var item = document.createElement("button");
+      item.type = "button";
       item.className = "field-item";
-      item.innerHTML = "<span>" + (c.type === "number" ? "123" : c.type === "date" ? "DATE" : "ABC") + "</span><b>" + IMK.escape(c.name) + "</b>";
+      item.draggable = true;
+      item.title = IMK.i18n.t("fieldHint");
+      item.setAttribute("aria-label", c.name + ". " + IMK.i18n.t("fieldHint"));
+      item.innerHTML = "<span>" + (c.type === "number" ? "123" : c.type === "date" ? "DATE" : "ABC") + "</span><b>" + IMK.escape(c.name) + "</b><i data-lucide='arrow-up-right' aria-hidden='true'></i>";
+      item.onclick = function () { IMK.Tiles.useField(c.name); };
+      item.ondragstart = function (event) {
+        event.dataTransfer.effectAllowed = "copy";
+        event.dataTransfer.setData("text/plain", c.name);
+        item.classList.add("dragging");
+      };
+      item.ondragend = function () { item.classList.remove("dragging"); };
       fieldList.appendChild(item);
     });
     IMK.Slicers.render();
@@ -108,6 +160,7 @@
       warnings.appendChild(div);
     });
     if (!warnings.children.length) warnings.innerHTML = "<small>No warnings</small>";
+    IMK.Icons.refresh();
   }
 
   document.getElementById("fileInput").onchange = function (e) { importFiles(Array.from(e.target.files)); e.target.value = ""; };
@@ -116,16 +169,17 @@
     try {
       await IMK.FolderScanner.chooseFolder(importFiles);
       IMK.FolderScanner.startPolling(importFiles);
-    } catch (err) { IMK.toast(err.message, "err"); }
+    } catch (err) { IMK.toast(IMK.errorMessage(err), IMK.isAbortError(err) ? "" : "err"); }
   };
   document.getElementById("btnAuto").onclick = function () { autoSuggest(); IMK.renderAll(); };
+  document.getElementById("btnAddVisual").onclick = function () { IMK.Tiles.openCreator(); };
   document.getElementById("btnSave").onclick = function () { IMK.ReportIO.save().catch(function (err) { IMK.toast(err.message, "err"); }); };
   document.getElementById("btnLoad").onclick = function () { document.getElementById("reportFileInput").click(); };
   document.getElementById("reportFileInput").onchange = function (e) { if (e.target.files[0]) IMK.ReportIO.loadFile(e.target.files[0]); };
-  document.getElementById("btnReportsFolder").onclick = function () { IMK.ReportIO.chooseReportsFolder().catch(function (err) { IMK.toast(err.message, "err"); }); };
+  document.getElementById("btnReportsFolder").onclick = function () { IMK.ReportIO.chooseReportsFolder().catch(function (err) { IMK.toast(IMK.errorMessage(err), IMK.isAbortError(err) ? "" : "err"); }); };
   document.getElementById("btnPresent").onclick = function () { IMK.Present.start(); };
-  document.getElementById("btnPng").onclick = function () { IMK.Export.png().catch(function (err) { IMK.toast(err.message, "err"); }); };
-  document.getElementById("btnPdf").onclick = function () { IMK.Export.pdf().catch(function (err) { IMK.toast(err.message, "err"); }); };
+  document.getElementById("btnPng").onclick = function () { runBusy(this, IMK.Export.png, "pngPreparing", "pngDone"); };
+  document.getElementById("btnPdf").onclick = function () { runBusy(this, IMK.Export.pdf, "pdfPreparing", "pdfDone"); };
   document.getElementById("btnTheme").onclick = function () { IMK.Store.state.theme = IMK.Store.state.theme === "dark" ? "light" : "dark"; IMK.renderAll(); };
   document.getElementById("btnLang").onclick = function () { IMK.i18n.setLang(IMK.i18n.lang === "vi" ? "en" : "vi"); IMK.renderAll(); };
   document.getElementById("reportName").onchange = function (e) { IMK.Store.state.reportName = e.target.value || IMK.i18n.t("untitled"); };
@@ -133,4 +187,7 @@
   document.getElementById("btnClearHighlight").onclick = function () { IMK.Store.state.highlight = null; IMK.renderAll(); };
 
   IMK.renderAll();
+  if (IMK.FolderScanner.restoreSaved) {
+    IMK.FolderScanner.restoreSaved(importFiles, false).catch(function () { /* A stored handle may need a user gesture. */ });
+  }
 })();

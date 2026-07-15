@@ -15,6 +15,8 @@
     pages: [pageTemplate("Page 1")],
     activePageId: null,
     filters: {},
+    slicerOpen: {},
+    activeTileId: null,
     highlight: null,
     theme: "light"
   };
@@ -28,6 +30,8 @@
       state.warnings = bundle.warnings || [];
       state.activeDatasetId = state.datasets[0] ? state.datasets[0].id : null;
       state.filters = {};
+      state.slicerOpen = {};
+      state.activeTileId = null;
       state.highlight = null;
     },
     activeDataset: function () {
@@ -43,9 +47,11 @@
       return page;
     },
     removePage: function (id) {
-      if (state.pages.length <= 1) return;
+      if (state.pages.length <= 1) return false;
+      var removedIndex = state.pages.findIndex(function (p) { return p.id === id; });
       state.pages = state.pages.filter(function (p) { return p.id !== id; });
-      state.activePageId = state.pages[0].id;
+      state.activePageId = state.pages[Math.min(Math.max(removedIndex, 0), state.pages.length - 1)].id;
+      return true;
     },
     addTile: function (tile) {
       this.activePage().tiles.push(tile);

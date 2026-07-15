@@ -1,0 +1,5 @@
+archives/
+reports/
+.local/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="96" viewBox="0 0 320 96" role="img" aria-label="iMetriK">
+  <rect width="320" height="96" fill="none"/>
+  <g font-family="Be Vietnam Pro, Arial, sans-serif" font-weight="800" font-size="58">
+    <text x="8" y="66" fill="#0C447C">i</text>
+    <text x="28" y="66" fill="#D85A30">M</text>
+    <text x="82" y="66" fill="#0C447C">etri</text>
+    <text x="198" y="66" fill="#D85A30">K</text>
+  </g>
+  <path d="M260 31h44" stroke="#0C447C" stroke-width="8" stroke-linecap="round"/>
+  <path d="M260 50h32" stroke="#D85A30" stroke-width="8" stroke-linecap="round"/>
+  <path d="M260 69h52" stroke="#0C447C" stroke-width="8" stroke-linecap="round"/>
+</svg>

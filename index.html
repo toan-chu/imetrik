@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iMetriK - Offline BI Dashboard</title>
+  <link rel="stylesheet" href="vendor/gridstack/gridstack.min.css">
+  <link rel="stylesheet" href="src/view/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" aria-label="iMetriK">
+      <img id="brandLogo" alt="iMetriK logo">
+      <span class="wordmark"><span>i</span><b>M</b><span>etri</span><b>K</b></span>
+    </div>
+    <input id="reportName" class="report-name" value="Untitled report" aria-label="Report name">
+    <nav id="pageTabs" class="page-tabs" aria-label="Report pages"></nav>
+    <div class="toolbar">
+      <button id="btnImport" class="btn" title="Import files">Import</button>
+      <button id="btnFolder" class="btn" title="Scan folder">Folder</button>
+      <button id="btnAuto" class="btn" title="Auto suggest visuals" disabled>Auto</button>
+      <button id="btnSave" class="btn" title="Save report" disabled>Save</button>
+      <button id="btnLoad" class="btn" title="Load report">Load</button>
+      <button id="btnPresent" class="btn" title="Present" disabled>Present</button>
+      <button id="btnPng" class="btn" title="Export current page as PNG" disabled>PNG</button>
+      <button id="btnPdf" class="btn primary" title="Export PDF" disabled>PDF</button>
+      <button id="btnTheme" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+      <button id="btnLang" class="icon-btn" title="Language" aria-label="Language">VN</button>
+    </div>
+  </header>
+
+  <div id="statusBar" class="status-bar">
+    <span id="datasetStatus">No data</span>
+    <span id="folderStatus"></span>
+    <button id="btnClearHighlight" class="link-button" hidden>Clear highlight</button>
+  </div>
+
+  <main class="app-shell">
+    <aside class="sidebar">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Datasets</h2>
+          <span id="datasetCount" class="count">0</span>
+        </div>
+        <div id="datasetList" class="dataset-list"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Fields</h2>
+          <span id="fieldCount" class="count">0</span>
+        </div>
+        <div id="fieldList" class="field-list"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Slicers</h2>
+          <button id="btnResetFilters" class="link-button">Reset</button>
+        </div>
+        <div id="slicerList"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Data quality</h2>
+          <span id="warningCount" class="count">0</span>
+        </div>
+        <div id="warningList" class="warning-list"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Presets</h2>
+          <button id="btnReportsFolder" class="link-button">Folder</button>
+        </div>
+        <div id="presetList" class="preset-list"></div>
+      </section>
+    </aside>
+
+    <section class="canvas-shell">
+      <div id="emptyState" class="empty-state">
+        <div class="empty-mark">iM</div>
+        <h1>Build a local BI report</h1>
+        <p>Import Excel or CSV files, scan a folder, then shape pages for presentation. Your data stays in this browser.</p>
+        <div class="empty-actions">
+          <button id="btnImportEmpty" class="btn primary">Import files</button>
+          <button id="btnFolderEmpty" class="btn">Scan folder</button>
+        </div>
+      </div>
+      <section id="board" class="board" hidden>
+        <div id="pageCanvas" class="page-canvas grid-stack"></div>
+      </section>
+    </section>
+
+    <aside id="inspector" class="inspector" hidden></aside>
+  </main>
+
+  <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden>
+  <input id="reportFileInput" type="file" accept=".json,application/json" hidden>
+
+  <dialog id="sheetDialog" class="dialog">
+    <form method="dialog">
+      <h2>Select sheet</h2>
+      <div id="sheetChoices" class="choice-list"></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="exportStage" class="export-stage"></div>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="vendor/chart.umd.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="vendor/gridstack/gridstack-all.js"></script>
+  <script src="config.js"></script>
+  <script src="src/i18n/strings.js"></script>
+  <script src="src/i18n/format.js"></script>
+  <script src="src/data/merge-engine.js"></script>
+  <script src="src/data/parser.js"></script>
+  <script src="src/data/folder-scanner.js"></script>
+  <script src="src/model/measures.js"></script>
+  <script src="src/model/dataset-store.js"></script>
+  <script src="src/query/query-engine.js"></script>
+  <script src="src/view/charts.js"></script>
+  <script src="src/view/layout.js"></script>
+  <script src="src/view/slicers.js"></script>
+  <script src="src/view/pages.js"></script>
+  <script src="src/view/tile.js"></script>
+  <script src="src/view/present.js"></script>
+  <script src="src/view/export.js"></script>
+  <script src="src/report/report-io.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>

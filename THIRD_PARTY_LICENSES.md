@@ -6,6 +6,8 @@ iMetriK vendors browser libraries locally so the app can run offline.
 |---|---:|---|---|
 | SheetJS Community Edition | vendored | Apache-2.0 | `vendor/xlsx.full.min.js` |
 | Chart.js | vendored | MIT | `vendor/chart.umd.js` |
+| chartjs-chart-geo | 4.3.6 | MIT | `vendor/chartjs-chart-geo/` |
+| World Atlas / Natural Earth Admin 0 | 2.0.2 / Natural Earth 4.1.0 | ISC / public domain source data | `assets/maps/` |
 | jsPDF | vendored | MIT | `vendor/jspdf.umd.min.js` |
 | html2canvas | vendored | MIT | `vendor/html2canvas.min.js` |
 | Gridstack | 12.6.0 | MIT | `vendor/gridstack/` |

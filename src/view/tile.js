@@ -8,6 +8,7 @@
     { id: "sbar", label: "Stacked", icon: "layers" },
     { id: "line", label: "Line", icon: "line-chart" },
     { id: "area", label: "Area", icon: "area-chart" },
+    { id: "map", label: "Map", icon: "map" },
     { id: "donut", label: "Donut", icon: "pie-chart" },
     { id: "scatter", label: "Scatter", icon: "scatter-chart" },
     { id: "table", label: "Table", icon: "table" },
@@ -49,9 +50,10 @@
     var measure = (cols.find(function (c) { return c.role === "measure"; }) || cols[0] || {}).name || "";
     if (field && field.role === "measure") measure = field.name;
     if (field && field.role !== "measure") dim = field.name;
+    var resolvedType = type || defaultTypeForField(field);
     return {
       id: "tile_" + Date.now() + "_" + Math.random().toString(16).slice(2),
-      type: type || defaultTypeForField(field),
+      type: resolvedType,
       title: IMK.i18n.t("addVisual"),
       dim: dim,
       dim2: dim,
@@ -62,8 +64,126 @@
       granularity: "month",
       text: "Double-click to write an insight.",
       palette: "auto",
-      layout: { x: 0, y: 0, w: 6, h: type === "kpi" ? 2 : 4 }
+      layout: { x: 0, y: 0, w: resolvedType === "map" ? 8 : 6, h: resolvedType === "kpi" ? 2 : resolvedType === "map" ? 5 : 4 }
     };
+  }
+
+  function fieldGroups() {
+    var dataset = IMK.Store.activeDataset();
+    var cols = dataset ? dataset.columns : [];
+    return {
+      cols: cols,
+      dims: cols.filter(function (column) { return column.role === "dimension" && column.name !== "_source"; }),
+      nums: cols.filter(function (column) { return column.role === "measure"; })
+    };
+  }
+
+  function selectControl(label, id, cols, selected, allowBlank) {
+    return "<label class='control-field'><span>" + label + "</span><select id='" + id + "'>" + optionList(cols, selected, allowBlank) + "</select></label>";
+  }
+
+  function inputControl(label, id, value, type, attributes) {
+    return "<label class='control-field'><span>" + label + "</span><input id='" + id + "' type='" + (type || "text") + "' value='" + IMK.escape(value == null ? "" : value) + "' " + (attributes || "") + "></label>";
+  }
+
+  function basicDataControls(type, config, prefix) {
+    var groups = fieldGroups();
+    var html = "";
+    if (type === "text") {
+      return "<label class='control-field control-field-wide'><span>" + IMK.i18n.t("content") + "</span><textarea id='" + prefix + "Text' placeholder='" + IMK.i18n.t("textPlaceholder") + "'>" + IMK.escape(config.text || "") + "</textarea></label>";
+    }
+    if (type === "table") return "";
+    if (type === "kpi") {
+      html += selectControl(IMK.i18n.t("measure"), prefix + "Measure", groups.nums, config.measure, true);
+      html += aggregateControl(prefix, config.agg);
+      return html;
+    }
+    if (type === "scatter") {
+      html += selectControl(IMK.i18n.t("xMeasure"), prefix + "Dim", groups.nums, config.dim, false);
+      html += selectControl(IMK.i18n.t("yMeasure"), prefix + "Measure", groups.nums, config.measure, false);
+      return html;
+    }
+    if (type === "matrix") {
+      html += selectControl(IMK.i18n.t("rowDimension"), prefix + "Dim", groups.dims, config.dim, false);
+      html += selectControl(IMK.i18n.t("columnDimension"), prefix + "Dim2", groups.dims, config.dim2, false);
+      html += selectControl(IMK.i18n.t("measure"), prefix + "Measure", groups.nums, config.measure, true);
+      html += aggregateControl(prefix, config.agg);
+      return html;
+    }
+    html += selectControl(IMK.i18n.t(type === "map" ? "geography" : "dimension"), prefix + "Dim", groups.dims.length ? groups.dims : groups.cols, config.dim, false);
+    html += selectControl(IMK.i18n.t("measure"), prefix + "Measure", groups.nums, config.measure, true);
+    html += aggregateControl(prefix, config.agg);
+    return html;
+  }
+
+  function advancedDataControls(type, config, prefix) {
+    var groups = fieldGroups();
+    var html = "";
+    if (type === "text") return html;
+    if (type === "table") return inputControl(IMK.i18n.t("topN"), prefix + "TopN", config.topN || 50, "number", "min='1' max='500'");
+    if (type === "kpi") return currencyControl(prefix, config.currency);
+    if (type === "scatter") {
+      html += selectControl(IMK.i18n.t("series"), prefix + "Series", groups.dims, config.series, true);
+      html += currencyControl(prefix, config.currency);
+      return html;
+    }
+    if (type === "matrix" || type === "map") return currencyControl(prefix, config.currency);
+    html += selectControl(IMK.i18n.t("series"), prefix + "Series", groups.dims, config.series, true);
+    html += inputControl(IMK.i18n.t("topN"), prefix + "TopN", config.topN || 10, "number", "min='0' max='50'");
+    html += currencyControl(prefix, config.currency);
+    return html;
+  }
+
+  function dataControls(type, config, prefix) {
+    return basicDataControls(type, config, prefix) + advancedDataControls(type, config, prefix);
+  }
+
+  function aggregateControl(prefix, selected) {
+    return "<label class='control-field'><span>" + IMK.i18n.t("aggregate") + "</span><select id='" + prefix + "Agg'>" + ["sum", "avg", "count", "countd", "min", "max", "pct"].map(function (value) { return "<option value='" + value + "' " + (value === (selected || "sum") ? "selected" : "") + ">" + (value === "countd" ? "DISTINCT" : value === "pct" ? "% Yes" : value.toUpperCase()) + "</option>"; }).join("") + "</select></label>";
+  }
+
+  function currencyControl(prefix, currency) {
+    var selected = currency && currency.code ? currency.code.toLowerCase() : "";
+    return "<label class='control-field'><span>" + IMK.i18n.t("currency") + "</span><select id='" + prefix + "Currency'><option value='' " + (!selected ? "selected" : "") + ">" + IMK.i18n.t("number") + "</option><option value='vnd' " + (selected === "vnd" ? "selected" : "") + ">" + IMK.i18n.t("vndSuffix") + "</option><option value='usd' " + (selected === "usd" ? "selected" : "") + ">" + IMK.i18n.t("usdPrefix") + "</option><option value='eur' " + (selected === "eur" ? "selected" : "") + ">" + IMK.i18n.t("eurPrefix") + "</option></select></label>";
+  }
+
+  function currencyValue(value) {
+    return value === "vnd" ? { symbol: "đ", position: "suffix", code: "VND" } : value === "usd" ? { symbol: "$", position: "prefix", code: "USD" } : value === "eur" ? { symbol: "€", position: "prefix", code: "EUR" } : null;
+  }
+
+  function controlValue(root, id, fallback) {
+    var input = root.querySelector("#" + id);
+    return input ? input.value : fallback;
+  }
+
+  function readConfig(root, config, prefix) {
+    config.title = controlValue(root, prefix + "Title", config.title);
+    config.dim = controlValue(root, prefix + "Dim", config.dim);
+    config.dim2 = controlValue(root, prefix + "Dim2", config.dim2);
+    config.measure = controlValue(root, prefix + "Measure", config.measure);
+    config.agg = controlValue(root, prefix + "Agg", config.agg);
+    config.series = controlValue(root, prefix + "Series", config.series);
+    config.topN = Number(controlValue(root, prefix + "TopN", config.topN || 0));
+    config.text = controlValue(root, prefix + "Text", config.text);
+    config.currency = currencyValue(controlValue(root, prefix + "Currency", config.currency && config.currency.code ? config.currency.code.toLowerCase() : ""));
+    return config;
+  }
+
+  function suggestedTitle(type, config) {
+    if (type === "text") return IMK.i18n.t("textTile");
+    if (type === "table") return IMK.i18n.t("visualTable");
+    if (type === "matrix") return IMK.i18n.t("visualMatrix");
+    if (type === "scatter") return (config.measure || IMK.i18n.t("yMeasure")) + " / " + (config.dim || IMK.i18n.t("xMeasure"));
+    if (type === "kpi") return config.measure ? IMK.i18n.t("sumLabel") + " " + config.measure : IMK.i18n.t("countRows");
+    if (type === "map") return (config.measure ? IMK.i18n.t("sumLabel") + " " + config.measure : IMK.i18n.t("countRows")) + " " + IMK.i18n.t("byWord") + " " + (config.dim || IMK.i18n.t("geography"));
+    return (config.measure ? IMK.i18n.t("sumLabel") + " " + config.measure : IMK.i18n.t("countRows")) + (config.dim ? " " + IMK.i18n.t("byWord") + " " + config.dim : "");
+  }
+
+  function validConfig(type, config) {
+    if (type === "scatter") return !!(config.dim && config.measure);
+    if (type === "matrix") return !!(config.dim && config.dim2);
+    if (["bar", "hbar", "sbar", "line", "area", "map", "donut", "combo"].indexOf(type) >= 0) return !!config.dim;
+    return true;
   }
 
   function openCreator(options) {
@@ -71,38 +191,41 @@
     var dialog = document.getElementById("visualDialog");
     var dataset = IMK.Store.activeDataset();
     var selectedField = dataset && dataset.columns.find(function (c) { return c.name === options.fieldName; });
-    var selectedType = options.type || defaultTypeForField(selectedField);
-    var selectedPalette = "auto";
-    dialog.innerHTML = "<form method='dialog'><div class='visual-dialog-head'><div><span>" + IMK.i18n.t("chooseVisualEyebrow") + "</span><h2 id='visualDialogTitle'>" + IMK.i18n.t("chooseVisual") + "</h2>" + (selectedField ? "<p class='visual-dialog-context'>" + IMK.escape(selectedField.name) + "</p>" : "") + "</div><button class='icon-btn dialog-close' value='cancel' aria-label='" + IMK.i18n.t("cancel") + "'>" + IMK.Icons.markup("x", IMK.i18n.t("cancel")) + "</button></div>" +
-      "<section><h3>" + IMK.i18n.t("visualType") + "</h3><div class='visual-type-grid'>" + types.map(function (type) {
-        return "<button type='button' class='visual-type-option " + (type.id === selectedType ? "selected" : "") + "' data-type='" + type.id + "'>" + IMK.Icons.markup(type.icon, typeLabel(type)) + "<span>" + typeLabel(type) + "</span></button>";
-      }).join("") + "</div></section>" +
-      "<section><h3>" + IMK.i18n.t("palette") + "</h3>" + paletteMarkup(selectedPalette) + "</section>" +
-      "<div class='dialog-actions'><button class='btn' value='cancel'>" + IMK.i18n.t("cancel") + "</button><button type='button' class='btn accent create-visual'>" + IMK.Icons.markup("plus", IMK.i18n.t("createVisual")) + IMK.i18n.t("createVisual") + "</button></div></form>";
-    dialog.querySelectorAll(".visual-type-option").forEach(function (button) {
-      button.onclick = function () {
-        selectedType = button.dataset.type;
-        dialog.querySelectorAll(".visual-type-option").forEach(function (item) { item.classList.toggle("selected", item === button); });
+    var draft = newTile(options.type || defaultTypeForField(selectedField), options.fieldName);
+    draft.palette = draft.type === "map" ? "ocean" : "auto";
+    draft.title = suggestedTitle(draft.type, draft);
+
+    function renderCreator() {
+      dialog.innerHTML = "<form method='dialog'><div class='visual-dialog-head'><div><span>" + IMK.i18n.t("chooseVisualEyebrow") + "</span><h2 id='visualDialogTitle'>" + IMK.i18n.t("chooseVisual") + "</h2><p class='visual-dialog-context'>" + IMK.i18n.t("visualSettingsHint") + "</p></div><button class='icon-btn dialog-close' value='cancel' aria-label='" + IMK.i18n.t("cancel") + "'>" + IMK.Icons.markup("x", IMK.i18n.t("cancel")) + "</button></div>" +
+        "<div class='visual-builder'><section class='visual-type-section'><h3>" + IMK.i18n.t("visualType") + "</h3><div class='visual-type-grid'>" + types.map(function (type) { return "<button type='button' class='visual-type-option " + (type.id === draft.type ? "selected" : "") + "' data-type='" + type.id + "'>" + IMK.Icons.markup(type.icon, typeLabel(type)) + "<span>" + typeLabel(type) + "</span></button>"; }).join("") + "</div></section>" +
+        "<section class='visual-config-section'><h3>" + IMK.i18n.t("visualData") + "</h3><div class='visual-config-grid'>" + inputControl(IMK.i18n.t("title"), "crTitle", draft.title) + dataControls(draft.type, draft, "cr") + "</div><details class='style-disclosure'><summary>" + IMK.i18n.t("visualStyle") + "</summary>" + paletteMarkup(draft.palette) + "</details><p class='visual-config-error' hidden>" + IMK.i18n.t("requiredFields") + "</p></section></div>" +
+        "<div class='dialog-actions'><button class='btn' value='cancel'>" + IMK.i18n.t("cancel") + "</button><button type='button' class='btn accent create-visual'>" + IMK.Icons.markup("plus", IMK.i18n.t("createVisual")) + IMK.i18n.t("createVisual") + "</button></div></form>";
+      dialog.querySelectorAll(".visual-type-option").forEach(function (button) {
+        button.onclick = function () {
+          readConfig(dialog, draft, "cr");
+          var previousType = draft.type;
+          draft.type = button.dataset.type;
+          if (draft.type === "map" && previousType !== "map" && draft.palette === "auto") draft.palette = "ocean";
+          draft.title = suggestedTitle(draft.type, draft);
+          renderCreator();
+        };
+      });
+      dialog.querySelectorAll(".palette-option").forEach(function (button) {
+        button.onclick = function () { draft.palette = button.dataset.palette; renderCreator(); dialog.querySelector(".style-disclosure").open = true; };
+      });
+      dialog.querySelector(".create-visual").onclick = function () {
+        readConfig(dialog, draft, "cr");
+        if (!validConfig(draft.type, draft)) { dialog.querySelector(".visual-config-error").hidden = false; return; }
+        draft.layout = { x: 0, y: 0, w: draft.type === "map" ? 8 : 6, h: draft.type === "kpi" ? 2 : draft.type === "map" ? 5 : 4 };
+        IMK.Store.addTile(draft);
+        IMK.Store.state.activeTileId = draft.id;
+        dialog.close();
+        IMK.renderAll();
       };
-    });
-    dialog.querySelectorAll(".palette-option").forEach(function (button) {
-      button.onclick = function () {
-        selectedPalette = button.dataset.palette;
-        dialog.querySelectorAll(".palette-option").forEach(function (item) {
-          var active = item === button;
-          item.classList.toggle("selected", active);
-          item.setAttribute("aria-pressed", active);
-        });
-      };
-    });
-    dialog.querySelector(".create-visual").onclick = function () {
-      var tile = newTile(selectedType, options.fieldName);
-      tile.palette = selectedPalette;
-      IMK.Store.addTile(tile);
-      dialog.close();
-      IMK.renderAll();
-    };
-    IMK.Icons.refresh();
+      IMK.Icons.refresh();
+    }
+
+    renderCreator();
     dialog.showModal();
   }
 
@@ -133,7 +256,7 @@
       item.setAttribute("gs-y", layout.y);
       item.setAttribute("gs-w", layout.w);
       item.setAttribute("gs-h", layout.h);
-      item.innerHTML = "<div class='grid-stack-item-content tile " + (IMK.Store.state.activeTileId === tile.id ? "is-selected" : "") + "'><div class='tile-header'><span class='drag-handle' title='" + IMK.i18n.t("dragVisual") + "' aria-label='" + IMK.i18n.t("dragVisual") + "' tabindex='0'>" + IMK.Icons.markup("grip-vertical", IMK.i18n.t("dragVisual")) + "</span><input aria-label='Visual title' value='" + IMK.escape(tile.title || "") + "'><span class='tile-actions'><button class='icon-btn edit' title='" + IMK.i18n.t("editVisual") + "' aria-label='" + IMK.i18n.t("editVisual") + "'>" + IMK.Icons.markup("sliders-horizontal", IMK.i18n.t("editVisual")) + "</button><button class='icon-btn dup' title='" + IMK.i18n.t("duplicateVisual") + "' aria-label='" + IMK.i18n.t("duplicateVisual") + "'>" + IMK.Icons.markup("copy", IMK.i18n.t("duplicateVisual")) + "</button><button class='icon-btn danger del' title='" + IMK.i18n.t("deleteVisual") + "' aria-label='" + IMK.i18n.t("deleteVisual") + "'>" + IMK.Icons.markup("trash-2", IMK.i18n.t("deleteVisual")) + "</button></span></div><div class='tile-body'></div></div>";
+      item.innerHTML = "<div class='grid-stack-item-content tile " + (IMK.Store.state.activeTileId === tile.id ? "is-selected" : "") + "'><div class='tile-header'><span class='drag-handle' title='" + IMK.i18n.t("dragVisual") + "' aria-label='" + IMK.i18n.t("dragVisual") + "' tabindex='0'>" + IMK.Icons.markup("grip-vertical", IMK.i18n.t("dragVisual")) + "</span><input aria-label='Visual title' title='" + IMK.escape(tile.title || "") + "' value='" + IMK.escape(tile.title || "") + "'><span class='tile-actions'><button class='btn edit edit-visual-btn' title='" + IMK.i18n.t("editVisualHint") + "' aria-label='" + IMK.i18n.t("editVisual") + ": " + IMK.escape(tile.title || "") + "'>" + IMK.Icons.markup("sliders-horizontal", IMK.i18n.t("editVisual")) + "<span>" + IMK.i18n.t("editVisual") + "</span></button><button class='icon-btn dup' title='" + IMK.i18n.t("duplicateVisual") + "' aria-label='" + IMK.i18n.t("duplicateVisual") + "'>" + IMK.Icons.markup("copy", IMK.i18n.t("duplicateVisual")) + "</button><button class='icon-btn danger del' title='" + IMK.i18n.t("deleteVisual") + "' aria-label='" + IMK.i18n.t("deleteVisual") + "'>" + IMK.Icons.markup("trash-2", IMK.i18n.t("deleteVisual")) + "</button></span></div><div class='tile-body'></div></div>";
       var tileEl = item.querySelector(".tile");
       tileEl.onclick = function (event) {
         if (event.target.closest("button,input,.drag-handle")) return;
@@ -153,13 +276,28 @@
       item.querySelector(".edit").onclick = function () { openInspector(tile); };
       item.querySelector(".dup").onclick = function () { duplicate(tile); };
       item.querySelector(".del").onclick = function () {
+        var deletedIndex = page.tiles.indexOf(tile);
         page.tiles = page.tiles.filter(function (t) { return t.id !== tile.id; });
+        if (IMK.Store.state.activeTileId === tile.id) IMK.Store.state.activeTileId = null;
         IMK.renderAll();
+        IMK.toast(IMK.i18n.t("visualDeleted"), "", {
+          label: IMK.i18n.t("undo"),
+          run: function () {
+            page.tiles.splice(Math.max(0, deletedIndex), 0, tile);
+            IMK.Store.state.activeTileId = tile.id;
+            IMK.renderAll();
+          }
+        });
       };
       canvas.appendChild(item);
       grid.makeWidget(item);
       IMK.Charts.render(item.querySelector(".tile-body"), IMK.Store.activeDataset(), tile);
     });
+    var validTileIds = [];
+    IMK.Store.state.pages.forEach(function (statePage) {
+      statePage.tiles.forEach(function (stateTile) { validTileIds.push(stateTile.id); });
+    });
+    IMK.Charts.prune(validTileIds);
     IMK.Icons.refresh();
   }
 
@@ -174,6 +312,8 @@
     if (field.role === "measure") {
       tile.measure = field.name;
       if (!tile.agg || tile.agg === "count") tile.agg = "sum";
+    } else if (tile.type === "map") {
+      tile.dim = field.name;
     } else if (!tile.dim) {
       tile.dim = field.name;
     } else if (!tile.series) {
@@ -188,16 +328,13 @@
   }
 
   function useField(fieldName) {
-    var page = IMK.Store.activePage();
-    var tile = page.tiles.find(function (item) { return item.id === IMK.Store.state.activeTileId; });
-    if (tile) return applyField(tile, fieldName);
     openCreator({ fieldName: fieldName });
   }
 
   function duplicate(tile) {
     var copy = JSON.parse(JSON.stringify(tile));
     copy.id = "tile_" + Date.now();
-    copy.title = copy.title + " copy";
+    copy.title = copy.title + " " + IMK.i18n.t("copySuffix");
     copy.layout = { x: 0, y: 0, w: tile.layout.w, h: tile.layout.h };
     IMK.Store.addTile(copy);
     IMK.renderAll();
@@ -208,52 +345,35 @@
     return html + cols.map(function (c) { return "<option value='" + IMK.escape(c.name) + "' " + (c.name === selected ? "selected" : "") + ">" + IMK.escape(c.name) + "</option>"; }).join("");
   }
 
-  function openInspector(tile) {
+  function openInspector(tile, options) {
+    options = options || {};
     var dataset = IMK.Store.activeDataset();
     if (!dataset) return;
-    var cols = dataset.columns;
-    var dims = cols.filter(function (c) { return c.role === "dimension"; });
-    var nums = cols.filter(function (c) { return c.role === "measure"; });
     var inspector = document.getElementById("inspector");
+    IMK.Store.state.activeTileId = tile.id;
     inspector.hidden = false;
-    inspector.innerHTML = "<div class='inspector-head'><h2>Visual</h2><button class='icon-btn close' title='Close inspector' aria-label='Close inspector'>" + IMK.Icons.markup("x", "Close inspector") + "</button></div>" +
-      "<label>" + IMK.i18n.t("type") + "<select id='inType'>" + types.map(function (t) { return "<option value='" + t.id + "' " + (tile.type === t.id ? "selected" : "") + ">" + typeLabel(t) + "</option>"; }).join("") + "</select></label>" +
-      "<label>" + IMK.i18n.t("palette") + paletteMarkup(tile.palette || "auto") + "</label>" +
-      "<label>" + IMK.i18n.t("title") + "<input id='inTitle' value='" + IMK.escape(tile.title || "") + "'></label>" +
-      "<label>" + IMK.i18n.t("xAxis") + "<select id='inDim'>" + optionList(cols, tile.dim) + "</select></label>" +
-      "<label>" + IMK.i18n.t("columnAxis") + "<select id='inDim2'>" + optionList(dims, tile.dim2) + "</select></label>" +
-      "<label>" + IMK.i18n.t("measure") + "<select id='inMeasure'>" + optionList(nums.concat(cols.filter(function (c) { return c.role !== "measure"; })), tile.measure, true) + "</select></label>" +
-      "<label>" + IMK.i18n.t("aggregate") + "<select id='inAgg'><option value='sum'>SUM</option><option value='avg'>AVG</option><option value='count'>COUNT</option><option value='countd'>DISTINCT</option><option value='min'>MIN</option><option value='max'>MAX</option><option value='pct'>% Yes</option></select></label>" +
-      "<label>" + IMK.i18n.t("series") + "<select id='inSeries'>" + optionList(dims, tile.series, true) + "</select></label>" +
-      "<label>" + IMK.i18n.t("topN") + "<input id='inTopN' type='number' min='0' max='50' value='" + (tile.topN || 0) + "'></label>" +
-      "<label>" + IMK.i18n.t("currency") + "<select id='inCurrency'><option value=''>" + IMK.i18n.t("number") + "</option><option value='vnd'>" + IMK.i18n.t("vndSuffix") + "</option><option value='usd'>" + IMK.i18n.t("usdPrefix") + "</option><option value='eur'>" + IMK.i18n.t("eurPrefix") + "</option></select></label>" +
-      "<label>Text<textarea id='inText'>" + IMK.escape(tile.text || "") + "</textarea></label>";
+    inspector.innerHTML = "<div class='inspector-head'><div><span>" + IMK.i18n.t("visualSettings") + "</span><h2>" + IMK.i18n.t("inspectorTitle") + "</h2><p class='inspector-editing'>" + IMK.i18n.t("editingVisual") + " <strong>" + IMK.escape(tile.title || typeLabel(types.find(function (type) { return type.id === tile.type; }))) + "</strong></p></div><button class='icon-btn close' title='" + IMK.i18n.t("closeInspector") + "' aria-label='" + IMK.i18n.t("closeInspector") + "'>" + IMK.Icons.markup("x", IMK.i18n.t("closeInspector")) + "</button></div>" +
+      "<div class='inspector-guide'><p>" + IMK.i18n.t("editVisualGuide") + "</p><div class='edit-capabilities'><span>" + IMK.i18n.t("visualData") + "</span><span>" + IMK.i18n.t("calculation") + "</span><span>" + IMK.i18n.t("visualStyleShort") + "</span></div></div>" +
+      "<section class='settings-block basic-settings'><div class='settings-heading'><span class='setting-step'>1</span><div><h3>" + IMK.i18n.t("basicSettings") + "</h3><p>" + IMK.i18n.t("basicSettingsHint") + "</p></div></div><div class='visual-config-grid'><label class='control-field'><span>" + IMK.i18n.t("type") + "</span><select id='inType'>" + types.map(function (t) { return "<option value='" + t.id + "' " + (tile.type === t.id ? "selected" : "") + ">" + typeLabel(t) + "</option>"; }).join("") + "</select></label>" + inputControl(IMK.i18n.t("title"), "inTitle", tile.title || "") + basicDataControls(tile.type, tile, "in") + "</div></section>" +
+      "<details class='settings-block advanced-settings' " + (options.advancedOpen ? "open" : "") + "><summary><span class='setting-step'>2</span><div><h3>" + IMK.i18n.t("advancedSettings") + "</h3><p>" + IMK.i18n.t("advancedSettingsHint") + "</p></div>" + IMK.Icons.markup("chevron-down", IMK.i18n.t("advancedSettings")) + "</summary><div class='advanced-content'><div class='visual-config-grid'>" + advancedDataControls(tile.type, tile, "in") + "</div><div class='advanced-style'><h4>" + IMK.i18n.t("visualStyle") + "</h4>" + paletteMarkup(tile.palette || "auto") + "</div></div></details>";
     inspector.querySelector(".close").onclick = function () { inspector.hidden = true; };
     IMK.Icons.refresh();
-    inspector.querySelector("#inAgg").value = tile.agg || "sum";
-    inspector.querySelector("#inCurrency").value = tile.currency ? tile.currency.code.toLowerCase() : "";
     inspector.querySelectorAll(".palette-option").forEach(function (button) {
       button.onclick = function () {
         tile.palette = button.dataset.palette;
         IMK.renderAll();
-        openInspector(tile);
+        openInspector(tile, { advancedOpen: true });
       };
     });
     inspector.querySelectorAll("input,select,textarea").forEach(function (input) {
       input.onchange = function () {
-        tile.type = inspector.querySelector("#inType").value;
-        tile.title = inspector.querySelector("#inTitle").value;
-        tile.dim = inspector.querySelector("#inDim").value;
-        tile.dim2 = inspector.querySelector("#inDim2").value;
-        tile.measure = inspector.querySelector("#inMeasure").value;
-        tile.agg = inspector.querySelector("#inAgg").value;
-        tile.series = inspector.querySelector("#inSeries").value;
-        tile.topN = Number(inspector.querySelector("#inTopN").value || 0);
-        tile.text = inspector.querySelector("#inText").value;
-        var cur = inspector.querySelector("#inCurrency").value;
-        tile.currency = cur === "vnd" ? { symbol: "đ", position: "suffix", code: "VND" } : cur === "usd" ? { symbol: "$", position: "prefix", code: "USD" } : cur === "eur" ? { symbol: "€", position: "prefix", code: "EUR" } : null;
+        var previousType = tile.type;
+        var advancedOpen = !!input.closest(".advanced-settings");
+        tile.type = controlValue(inspector, "inType", tile.type);
+        readConfig(inspector, tile, "in");
+        if (previousType !== tile.type) tile.title = suggestedTitle(tile.type, tile);
         IMK.renderAll();
-        openInspector(tile);
+        openInspector(tile, { advancedOpen: advancedOpen });
       };
     });
   }

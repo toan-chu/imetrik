@@ -15,6 +15,7 @@ const activeFiles = [
   ,"src/view/icons.js"
   ,"src/view/pages.js"
   ,"src/view/tile.js"
+  ,"src/view/map.js"
   ,"src/view/charts.js"
   ,"src/view/present.js"
   ,"src/view/export.js"
@@ -31,6 +32,7 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 if (html.includes('type="module"')) throw new Error("ES modules are not allowed for file://");
 if (!html.includes("vendor/gridstack/gridstack-all.js")) throw new Error("Gridstack is not vendored");
 if (!html.includes("vendor/lucide/lucide.min.js")) throw new Error("Lucide is not vendored");
+if (!html.includes("vendor/chartjs-chart-geo/index.umd.min.js") || !html.includes("assets/maps/world-atlas-110m.js")) throw new Error("Offline choropleth assets are not loaded");
 if (!/<div class="board-toolbar">[\s\S]*id="btnAddVisual"[\s\S]*<div id="pageCanvas"/.test(html)) {
   throw new Error("Add visual must be outside the Gridstack canvas");
 }
@@ -43,7 +45,8 @@ for (const match of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
 const sandbox = {
   window: {},
   document: {
-    documentElement: { lang: "vi" }
+    documentElement: { lang: "vi" },
+    querySelectorAll: () => []
   },
   console
 };
@@ -97,10 +100,14 @@ for (const fontFile of [
 }
 if (!css.includes(".page-tabs .page-actions .icon-btn{width:32px;height:34px;min-height:34px") || !css.includes("border:0;border-radius:8px;background:transparent")) throw new Error("Flat page action controls are missing");
 if (!html.includes('id="btnImport" class="btn accent"')) throw new Error("Import action must use the orange accent");
+if (!html.includes('id="btnAddVisual" class="btn accent"')) throw new Error("Add visual must use the orange accent");
+if (/id="btnPdf" class="[^"]*primary/.test(html)) throw new Error("PDF must not use a dark filled primary style");
+if (!css.includes("--hover-surface: #E5EEEE") || !css.includes("background: var(--hover-surface)")) throw new Error("Blue-gray hover surface is missing");
 if (!css.includes(".drag-handle")) throw new Error("Dedicated tile drag handle is missing");
 const exportText = fs.readFileSync(path.join(root, "src/view/export.js"), "utf8");
 if (!exportText.includes('format: "a4"') || !exportText.includes("nextBreak")) throw new Error("Paginated A4 PDF export is missing");
 if (!exportText.includes('pdf.output("blob")') || !exportText.includes("downloadBlob")) throw new Error("Reliable Blob PDF download is missing");
+if (!exportText.includes("sourceCanvases") || !exportText.includes("onclone") || !exportText.includes('drawImage(source, 0, 0)')) throw new Error("Canvas visuals are not copied into PNG/PDF export snapshots");
 if (!html.includes("assets/logo-iMetriK-data.js") || !fs.existsSync(path.join(root, "assets/logo-iMetriK-data.js"))) throw new Error("Offline-safe embedded export logo is missing");
 if (!exportText.includes('"header-" + physicalPageNumber')) throw new Error("Multi-page PDF headers must use unique image aliases");
 const layoutText = fs.readFileSync(path.join(root, "src/view/layout.js"), "utf8");
@@ -114,12 +121,22 @@ if (!layoutText.includes("breakpoints") || !layoutText.includes("grid.getColumn(
 if (!layoutText.includes('window.addEventListener("resize"') || !layoutText.includes("nextMobileViewport")) throw new Error("Responsive Gridstack rebuild is missing");
 if (!tileText.includes("mobileY") || !tileText.includes("grid.getColumn() === 1")) throw new Error("Mobile tile stacking is missing");
 if (!html.includes('id="visualDialog"') || !tileText.includes("openCreator") || !tileText.includes("palette-picker")) throw new Error("Visual type and palette gallery is missing");
+if (!tileText.includes("dataControls(draft.type, draft") || !tileText.includes("validConfig(draft.type, draft)")) throw new Error("Visual creation must configure and validate data before creation");
+if (!tileText.includes("basicDataControls(tile.type, tile") || !tileText.includes("advancedDataControls(tile.type, tile") || tileText.includes("<label>Text<textarea id='inText'")) throw new Error("Inspector must show contextual Basic and Advanced controls only");
+if (!tileText.includes("edit-visual-btn") || !tileText.includes('IMK.i18n.t("basicSettings")') || !tileText.includes('IMK.i18n.t("advancedSettings")')) throw new Error("Discoverable graph editing hierarchy is missing");
+if (!css.includes(".tile-actions .edit-visual-btn") || !css.includes(".advanced-settings")) throw new Error("Graph edit and progressive settings styles are missing");
 if (/btnAddVisual[^\n]+addTile/.test(mainText) || !mainText.includes("IMK.Tiles.openCreator()")) throw new Error("Add visual must open the gallery without immediately creating a tile");
 if (!chartText.includes('IMK.Store.state.theme === "dark"') || !chartText.includes("tile.palette")) throw new Error("Charts do not switch palette by theme and visual");
+if (!tileText.includes('{ id: "map"') || !chartText.includes("IMK.Map.config") || !fs.existsSync(path.join(root, "src/view/map.js"))) throw new Error("Map visual is not wired into the tile and chart renderers");
+if (!chartText.includes("current.update()") || !chartText.includes("detachAll") || !chartText.includes("prefers-reduced-motion")) throw new Error("Smooth in-place chart updates or motion safeguards are missing");
 if (!presentText.includes('addEventListener("fullscreenchange"') || !css.includes("overflow-y:auto;overscroll-behavior:contain")) throw new Error("Present fullscreen exit or scrolling regression");
 if (!mainText.includes("IMK.isAbortError") || !mainText.includes('IMK.i18n.t("folderCancelled")')) throw new Error("Folder cancellation is not localized");
 if (!fs.readFileSync(path.join(root, "src/view/slicers.js"), "utf8").includes("slicerOpen")) throw new Error("Slicer open state persistence is missing");
 if (!mainText.includes("item.draggable = true") || !tileText.includes("useField")) throw new Error("Fields interaction is missing");
+if (!mainText.includes("preserveFilters: hadTiles") || !mainText.includes("if (!hadTiles) autoSuggest(false)")) throw new Error("Refresh import must preserve the customized dashboard");
+const parserText = fs.readFileSync(path.join(root, "src/data/parser.js"), "utf8");
+if (!parserText.includes("suggestedHeaderRow") || !parserText.includes("selections.map") || !parserText.includes("headerRow")) throw new Error("Workbook sheet/header review is missing");
+if (!parserText.includes("blankrows: true")) throw new Error("Workbook preview must preserve blank-row indexes for header selection");
 if (!configText.includes("ocean:") || !configText.includes("spectrum:")) throw new Error("Expanded chart palettes are missing");
 const scannerText = fs.readFileSync(path.join(root, "src/data/folder-scanner.js"), "utf8");
 if (scannerText.includes("if (await restoreSaved(onFiles, true)) return true;")) throw new Error("Folder chooser must allow selecting a different folder");
@@ -127,5 +144,23 @@ if (!scannerText.includes("lastSeen = {};")) throw new Error("Folder switch must
 for (const fixture of ["sample-data/demo-sales-north.xlsx", "sample-data/demo-sales-south.xlsx"]) {
   if (!fs.existsSync(path.join(root, fixture))) throw new Error(`Synthetic sample fixture is missing: ${fixture}`);
 }
+
+// Report safety regression: refresh keeps layout/filters and JSON save restores them.
+IMK.Store.setDatasets(bundle);
+const preservedPage = IMK.Store.activePage();
+const dimensionName = bundle.datasets[0].columns.find((column) => column.role === "dimension").name;
+const measureName = bundle.datasets[0].columns.find((column) => column.role === "measure").name;
+const preservedTile = { id: "tile_keep", title: "Customized title", type: "bar", dim: dimensionName, measure: measureName, agg: "sum", layout: { x: 0, y: 0, w: 6, h: 4 } };
+preservedPage.tiles.push(preservedTile);
+IMK.Store.state.filters[dimensionName] = { kind: "set", values: ["Sales"], active: true };
+IMK.Store.setDatasets(bundle, { preserveFilters: true });
+if (IMK.Store.activePage().tiles[0].title !== "Customized title") throw new Error("Dataset refresh destroyed the customized layout");
+if (!IMK.Store.state.filters[dimensionName] || !IMK.Store.state.filters[dimensionName].active) throw new Error("Dataset refresh dropped an applicable filter");
+const savedReport = JSON.parse(JSON.stringify(IMK.Store.serialize()));
+IMK.Store.state.pages = [{ id: "temporary", name: "Temporary", tiles: [] }];
+IMK.Store.state.activePageId = "temporary";
+IMK.Store.state.filters = {};
+IMK.Store.applyReport(savedReport);
+if (IMK.Store.activePage().tiles[0].title !== "Customized title" || !IMK.Store.state.filters[dimensionName].active) throw new Error("Saved report did not restore layout and filters");
 
 console.log("smoke-check passed");

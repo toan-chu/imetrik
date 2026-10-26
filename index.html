@@ -10,22 +10,31 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand" aria-label="iMetriK">
-      <img id="brandLogo" alt="iMetriK logo">
+    <div class="topbar-identity">
+      <div class="brand" aria-label="iMetriK">
+        <img id="brandLogo" alt="iMetriK logo">
+      </div>
+      <input id="reportName" class="report-name" value="Untitled report" aria-label="Report name">
     </div>
-    <input id="reportName" class="report-name" value="Untitled report" aria-label="Report name">
     <nav id="pageTabs" class="page-tabs" aria-label="Report pages"></nav>
     <div class="toolbar">
-      <button id="btnImport" class="btn accent" data-i18n-title="importFiles" title="Import files"><i data-lucide="upload" aria-hidden="true"></i><span data-i18n="importFiles">Import</span></button>
-      <button id="btnFolder" class="btn" data-i18n-title="scanFolder" title="Scan folder"><i data-lucide="folder-search" aria-hidden="true"></i><span data-i18n="scanFolder">Folder</span></button>
-      <button id="btnAuto" class="btn" data-i18n-title="autoSuggest" title="Auto suggest visuals" disabled><i data-lucide="wand-sparkles" aria-hidden="true"></i><span data-i18n="autoSuggest">Auto</span></button>
-      <button id="btnSave" class="btn" data-i18n-title="saveReport" title="Save report" disabled><i data-lucide="save" aria-hidden="true"></i><span data-i18n="saveReport">Save</span></button>
-      <button id="btnLoad" class="btn" data-i18n-title="loadReport" title="Load report"><i data-lucide="folder-up" aria-hidden="true"></i><span data-i18n="loadReport">Load</span></button>
-      <button id="btnPresent" class="btn" data-i18n-title="present" title="Present" disabled><i data-lucide="presentation" aria-hidden="true"></i><span data-i18n="present">Present</span></button>
-      <button id="btnPng" class="btn" data-i18n-title="exportPng" title="Export current page as PNG" disabled><i data-lucide="image-down" aria-hidden="true"></i><span data-i18n="exportPng">PNG</span></button>
-      <button id="btnPdf" class="btn primary" data-i18n-title="exportPdf" title="Export PDF" disabled><i data-lucide="file-down" aria-hidden="true"></i><span data-i18n="exportPdf">PDF</span></button>
-      <button id="btnTheme" class="icon-btn" title="Toggle theme" aria-label="Toggle theme"><i data-lucide="moon" aria-hidden="true"></i></button>
-      <button id="btnLang" class="icon-btn" title="Language" aria-label="Language">VN</button>
+      <div class="toolbar-primary">
+        <button id="btnImport" class="btn accent" data-i18n-title="importFiles" title="Import files"><i data-lucide="upload" aria-hidden="true"></i><span data-i18n="importFiles">Import</span></button>
+        <button id="btnFolder" class="btn" data-i18n-title="scanFolder" title="Scan folder"><i data-lucide="folder-search" aria-hidden="true"></i><span data-i18n="scanFolder">Folder</span></button>
+        <button id="btnAuto" class="btn" data-i18n-title="autoSuggest" title="Build sample dashboard" disabled><i data-lucide="layout-dashboard" aria-hidden="true"></i><span data-i18n="autoSuggest">Sample dashboard</span></button>
+      </div>
+      <div id="toolbarSecondary" class="toolbar-secondary">
+        <button id="btnSave" class="btn" data-i18n-title="saveReport" title="Save report" disabled><i data-lucide="save" aria-hidden="true"></i><span data-i18n="saveReport">Save report</span></button>
+        <button id="btnLoad" class="btn" data-i18n-title="loadReport" title="Load report"><i data-lucide="folder-up" aria-hidden="true"></i><span data-i18n="loadReport">Open report</span></button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="btnPresent" class="btn" data-i18n-title="present" title="Present" disabled><i data-lucide="presentation" aria-hidden="true"></i><span data-i18n="present">Present</span></button>
+        <button id="btnPng" class="btn" data-i18n-title="exportPng" title="Export current page as PNG" disabled><i data-lucide="image-down" aria-hidden="true"></i><span data-i18n="exportPng">PNG</span></button>
+        <button id="btnPdf" class="btn" data-i18n-title="exportPdf" title="Export PDF" disabled><i data-lucide="file-down" aria-hidden="true"></i><span data-i18n="exportPdf">PDF</span></button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="btnTheme" class="icon-btn" title="Toggle theme" aria-label="Toggle theme"><i data-lucide="moon" aria-hidden="true"></i></button>
+        <button id="btnLang" class="icon-btn language-btn" title="Language" aria-label="Language">VN</button>
+      </div>
+      <button id="btnMore" class="btn toolbar-more" type="button" aria-expanded="false" aria-controls="toolbarSecondary"><i data-lucide="ellipsis" aria-hidden="true"></i><span data-i18n="more">More</span></button>
     </div>
   </header>
 
@@ -36,7 +45,11 @@
   </div>
 
   <main class="app-shell">
-    <aside class="sidebar">
+    <aside id="sidebar" class="sidebar" aria-label="Data workspace">
+      <div class="sidebar-mobile-head">
+        <strong data-i18n="dataWorkspace">Data workspace</strong>
+        <button id="btnSidebarClose" class="icon-btn" type="button" data-i18n-title="closePanel" aria-label="Close panel"><i data-lucide="x" aria-hidden="true"></i></button>
+      </div>
       <section class="panel">
         <div class="panel-head">
           <h2 data-i18n="datasets">Datasets</h2>
@@ -76,17 +89,25 @@
 
     <section class="canvas-shell">
       <div id="emptyState" class="empty-state">
-        <div class="empty-logo"><img id="emptyLogo" alt="" aria-hidden="true"></div>
-        <h1 data-i18n="emptyTitle">Build a local BI report</h1>
-        <p data-i18n="emptyDescription">Import Excel or CSV files, scan a folder, then shape pages for presentation. Your data stays in this browser.</p>
-        <div class="empty-actions">
-          <button id="btnImportEmpty" class="btn accent" data-i18n="importFiles">Import files</button>
-          <button id="btnFolderEmpty" class="btn" data-i18n="scanFolder">Scan folder</button>
+        <div class="empty-copy">
+          <div class="empty-logo"><img id="emptyLogo" alt="" aria-hidden="true"></div>
+          <h1 data-i18n="emptyTitle">Build a local BI report</h1>
+          <p data-i18n="emptyDescription">Import Excel or CSV files, then turn the fields into a clear dashboard. Your data stays in this browser.</p>
+          <div class="empty-actions">
+            <button id="btnImportEmpty" class="btn accent" data-i18n="importFiles">Import files</button>
+            <button id="btnFolderEmpty" class="btn" data-i18n="scanFolder">Scan folder</button>
+          </div>
         </div>
+        <ol class="empty-steps" aria-label="Getting started">
+          <li><span>1</span><div><strong data-i18n="emptyStepImportTitle">Choose your data</strong><p data-i18n="emptyStepImportText">Import files or scan a local folder.</p></div></li>
+          <li><span>2</span><div><strong data-i18n="emptyStepBuildTitle">Build the view</strong><p data-i18n="emptyStepBuildText">Choose fields and configure the visual before creating it.</p></div></li>
+          <li><span>3</span><div><strong data-i18n="emptyStepShareTitle">Present or export</strong><p data-i18n="emptyStepShareText">Share the result as a live view, PNG, or PDF.</p></div></li>
+        </ol>
       </div>
       <section id="board" class="board" hidden>
         <div class="board-toolbar">
           <div class="board-page-label">
+            <button id="btnSidebarOpen" class="icon-btn sidebar-open-button" type="button" data-i18n-title="dataWorkspace" aria-label="Data workspace"><i data-lucide="panel-left" aria-hidden="true"></i></button>
             <span data-i18n="page">Page</span>
             <strong id="boardPageName">Page 1</strong>
           </div>
@@ -102,25 +123,23 @@
   <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden>
   <input id="reportFileInput" type="file" accept=".json,application/json" hidden>
 
-  <dialog id="sheetDialog" class="dialog">
-    <form method="dialog">
-      <h2>Select sheet</h2>
-      <div id="sheetChoices" class="choice-list"></div>
-    </form>
-  </dialog>
+  <dialog id="sheetDialog" class="dialog import-dialog" aria-labelledby="sheetDialogTitle"></dialog>
 
   <dialog id="visualDialog" class="dialog visual-dialog" aria-labelledby="visualDialogTitle"></dialog>
+  <dialog id="pageDialog" class="dialog compact-dialog" aria-labelledby="pageDialogTitle"></dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="exportStage" class="export-stage"></div>
 
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="vendor/chart.umd.js"></script>
+  <script src="vendor/chartjs-chart-geo/index.umd.min.js"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
   <script src="vendor/html2canvas.min.js"></script>
   <script src="vendor/gridstack/gridstack-all.js"></script>
   <script src="vendor/lucide/lucide.min.js"></script>
   <script src="assets/logo-iMetriK-data.js"></script>
+  <script src="assets/maps/world-atlas-110m.js"></script>
   <script src="config.js"></script>
   <script src="src/view/icons.js"></script>
   <script src="src/i18n/strings.js"></script>
@@ -131,6 +150,7 @@
   <script src="src/model/measures.js"></script>
   <script src="src/model/dataset-store.js"></script>
   <script src="src/query/query-engine.js"></script>
+  <script src="src/view/map.js"></script>
   <script src="src/view/charts.js"></script>
   <script src="src/view/layout.js"></script>
   <script src="src/view/slicers.js"></script>

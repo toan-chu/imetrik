@@ -22,9 +22,10 @@
       var writable = await file.createWritable();
       await writable.write(JSON.stringify(report, null, 2));
       await writable.close();
-      IMK.toast("Report saved");
+      IMK.toast(IMK.i18n.t("reportSaved"));
     } else {
       downloadJson(report, "imetrik-report.json");
+      IMK.toast(IMK.i18n.t("reportDownloaded"));
     }
   }
 
@@ -32,6 +33,7 @@
     var text = await file.text();
     IMK.Store.applyReport(JSON.parse(text));
     IMK.renderAll();
+    IMK.toast(IMK.i18n.t("reportLoaded"));
   }
 
   async function chooseReportsFolder() {

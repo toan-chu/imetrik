@@ -8,6 +8,7 @@
 
   IMK.Layout = {
     init: function () {
+      if (IMK.Charts && IMK.Charts.detachAll) IMK.Charts.detachAll();
       if (grid) grid.destroy(false);
       document.getElementById("pageCanvas").innerHTML = "";
       grid = GridStack.init({
@@ -27,6 +28,7 @@
           var tile = page.tiles.find(function (t) { return t.id === item.el.dataset.tileId; });
           if (tile) tile.layout = { x: item.x, y: item.y, w: item.w, h: item.h };
         });
+        if (IMK.Charts && IMK.Charts.resizeAll) IMK.Charts.resizeAll();
       });
       return grid;
     },

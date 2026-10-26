@@ -24,15 +24,19 @@
 
   IMK.Store = {
     state: state,
-    setDatasets: function (bundle) {
+    setDatasets: function (bundle, options) {
+      options = options || {};
+      var previousFilters = state.filters;
       state.datasets = bundle.datasets || [];
       state.anchors = bundle.anchors || [];
       state.warnings = bundle.warnings || [];
       state.activeDatasetId = state.datasets[0] ? state.datasets[0].id : null;
-      state.filters = {};
+      state.filters = options.preserveFilters ? previousFilters : {};
       state.slicerOpen = {};
-      state.activeTileId = null;
+      if (!state.pages.some(function (page) { return page.tiles.some(function (tile) { return tile.id === state.activeTileId; }); })) state.activeTileId = null;
       state.highlight = null;
+      pruneFilters();
+      remapTilesToActiveDataset();
     },
     activeDataset: function () {
       return state.datasets.find(function (d) { return d.id === state.activeDatasetId; }) || state.datasets[0] || null;
@@ -40,8 +44,8 @@
     activePage: function () {
       return state.pages.find(function (p) { return p.id === state.activePageId; }) || state.pages[0];
     },
-    addPage: function () {
-      var page = pageTemplate("Page " + (state.pages.length + 1));
+    addPage: function (name) {
+      var page = pageTemplate(name || "Page " + (state.pages.length + 1));
       state.pages.push(page);
       state.activePageId = page.id;
       return page;
@@ -58,9 +62,11 @@
     },
     serialize: function () {
       return {
-        version: 1,
+        version: 2,
         reportName: state.reportName,
         pages: state.pages,
+        activePageId: state.activePageId,
+        filters: state.filters,
         theme: state.theme,
         lang: IMK.i18n.lang
       };
@@ -68,9 +74,11 @@
     applyReport: function (report) {
       state.reportName = report.reportName || state.reportName;
       state.pages = report.pages && report.pages.length ? report.pages : [pageTemplate("Page 1")];
-      state.activePageId = state.pages[0].id;
+      state.activePageId = state.pages.some(function (page) { return page.id === report.activePageId; }) ? report.activePageId : state.pages[0].id;
+      state.filters = reviveFilters(report.filters || {});
       state.theme = report.theme || "light";
       if (report.lang) IMK.i18n.setLang(report.lang);
+      pruneFilters();
       remapTilesToActiveDataset();
     }
   };
@@ -98,6 +106,30 @@
         tile.measure = remapField(tile.measure, dataset.columns);
         tile.series = remapField(tile.series, dataset.columns);
       });
+    });
+  }
+
+  function reviveFilters(filters) {
+    var revived = {};
+    Object.keys(filters || {}).forEach(function (key) {
+      var filter = Object.assign({}, filters[key]);
+      if (filter.kind === "range") {
+        filter.from = filter.from ? new Date(filter.from) : null;
+        filter.to = filter.to ? new Date(filter.to) : null;
+        if (filter.from && Number.isNaN(+filter.from)) filter.from = null;
+        if (filter.to && Number.isNaN(+filter.to)) filter.to = null;
+      }
+      revived[key] = filter;
+    });
+    return revived;
+  }
+
+  function pruneFilters() {
+    var dataset = IMK.Store.activeDataset();
+    if (!dataset) return;
+    var available = new Set(dataset.columns.map(function (column) { return column.name; }));
+    Object.keys(state.filters).forEach(function (field) {
+      if (!available.has(field)) delete state.filters[field];
     });
   }
 })();

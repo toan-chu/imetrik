@@ -1,10 +1,4 @@
-archives/
-reports/
-.local/
 .playwright-cli/
 output/
-memory/
-log/
-handoff/
 .DS_Store
 Thumbs.db

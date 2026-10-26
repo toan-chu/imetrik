@@ -110,6 +110,7 @@
 
     var board = document.getElementById("board");
     var boardRect = board.getBoundingClientRect();
+    var sourceCanvases = Array.from(board.querySelectorAll("canvas"));
     var tileSpans = Array.from(board.querySelectorAll(".grid-stack-item")).map(function (item) {
       var rect = item.getBoundingClientRect();
       return { top: rect.top - boardRect.top, bottom: rect.bottom - boardRect.top };
@@ -119,7 +120,18 @@
         scale: 2,
         backgroundColor: "#ffffff",
         logging: false,
-        useCORS: true
+        useCORS: true,
+        onclone: function (clonedDocument) {
+          var clonedBoard = clonedDocument.getElementById("board");
+          var clonedCanvases = clonedBoard ? Array.from(clonedBoard.querySelectorAll("canvas")) : [];
+          sourceCanvases.forEach(function (source, index) {
+            var target = clonedCanvases[index];
+            if (!target) return;
+            target.width = source.width;
+            target.height = source.height;
+            target.getContext("2d").drawImage(source, 0, 0);
+          });
+        }
       });
       var renderedScale = canvas.width / boardRect.width;
       if (tileSpans.length) {

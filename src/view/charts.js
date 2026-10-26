@@ -34,6 +34,92 @@
     }
   }
 
+  function detachAll() {
+    Object.keys(instances).forEach(function (id) {
+      var canvas = instances[id] && instances[id].canvas;
+      var mount = canvas && canvas.$imkMount;
+      if (mount && mount.parentNode) mount.parentNode.removeChild(mount);
+      else if (canvas && canvas.parentNode) canvas.parentNode.removeChild(canvas);
+    });
+  }
+
+  function prune(validIds) {
+    Object.keys(instances).forEach(function (id) {
+      if (validIds.indexOf(id) < 0) destroy(id);
+    });
+  }
+
+  function reducedMotion() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  function disableMotion(pointCount) {
+    return document.body.classList.contains("exporting") || reducedMotion() || pointCount > C.ANIM_MAX_POINTS;
+  }
+
+  function mountCanvas(el, canvas, kind, statusMarkup) {
+    el.innerHTML = "";
+    var mount = canvas.$imkMount;
+    if (!mount) {
+      canvas.setAttribute("role", "img");
+      canvas.setAttribute("aria-label", kind === "map" ? "Choropleth map" : "Data visualization");
+      if (kind === "map") {
+        mount = document.createElement("div");
+        mount.className = "map-visual";
+        var frame = document.createElement("div");
+        frame.className = "map-canvas-frame";
+        frame.appendChild(canvas);
+        mount.appendChild(frame);
+        var status = document.createElement("div");
+        status.className = "map-status";
+        mount.$imkStatus = status;
+        mount.appendChild(status);
+      } else {
+        mount = document.createElement("div");
+        mount.className = "chart-canvas-frame";
+        mount.appendChild(canvas);
+      }
+      canvas.$imkMount = mount;
+    }
+    if (mount.$imkStatus) mount.$imkStatus.innerHTML = statusMarkup || "";
+    el.appendChild(mount);
+  }
+
+  function resizeAfterMount(chart) {
+    function resize() {
+      if (chart && chart.canvas && chart.canvas.$imkMount && chart.canvas.$imkMount.parentNode) chart.resize();
+    }
+    if (window.requestAnimationFrame) {
+      window.requestAnimationFrame(function () { window.requestAnimationFrame(resize); });
+    } else resize();
+  }
+
+  function resizeAll() {
+    Object.keys(instances).forEach(function (id) { resizeAfterMount(instances[id]); });
+  }
+
+  function upsertChart(el, tile, config, kind, statusMarkup) {
+    var current = instances[tile.id];
+    if (current && current.config.type !== config.type) {
+      destroy(tile.id);
+      current = null;
+    }
+    var canvas = current ? current.canvas : document.createElement("canvas");
+    mountCanvas(el, canvas, kind, statusMarkup);
+    if (!current) {
+      current = new Chart(canvas, config);
+      instances[tile.id] = current;
+    } else {
+      current.data = config.data;
+      current.options = config.options;
+      if (config.options.animation === false) current.update("none");
+      else current.update();
+    }
+    current.$imkVisualType = tile.type;
+    resizeAfterMount(current);
+    return current;
+  }
+
   function chartOptions(tile, disableAnimation) {
     var styles = getComputedStyle(document.body);
     var muted = styles.getPropertyValue("--muted").trim();
@@ -41,10 +127,12 @@
     return {
       responsive: true,
       maintainAspectRatio: false,
-      animation: disableAnimation ? false : { duration: 240 },
+      animation: disableAnimation ? false : { duration: 540, easing: "easeOutQuart" },
+      interaction: { mode: "nearest", intersect: false },
+      layout: { padding: { top: 4, right: 6, bottom: 2, left: 2 } },
       plugins: {
-        legend: { display: !!tile.series || tile.type === "donut", position: tile.type === "donut" ? "right" : "top", labels: { color: muted, usePointStyle: true, boxWidth: 7, boxHeight: 7 } },
-        tooltip: { callbacks: { label: function (ctx) {
+        legend: { display: !!tile.series || tile.type === "donut", position: tile.type === "donut" ? "right" : "top", labels: { color: muted, usePointStyle: true, pointStyle: "circle", boxWidth: 7, boxHeight: 7, padding: 14 } },
+        tooltip: { backgroundColor: styles.getPropertyValue("--surface").trim(), titleColor: styles.getPropertyValue("--ink").trim(), bodyColor: muted, borderColor: line, borderWidth: 1, padding: 11, displayColors: true, boxPadding: 4, callbacks: { label: function (ctx) {
           var val = ctx.parsed;
           if (typeof val === "object") val = ctx.chart.options.indexAxis === "y" ? val.x : val.y;
           return (ctx.dataset.label ? ctx.dataset.label + ": " : "") + formatValue(tile, val);
@@ -68,18 +156,27 @@
     data.datasets.forEach(function (ds, index) {
       if (tile.type === "line" || tile.type === "area" || tile.type === "combo") {
         ds.borderColor = color(tile, index);
-        ds.backgroundColor = tile.type === "area" ? color(tile, index, 0.18) : color(tile, index, 0.08);
-        ds.fill = tile.type === "area";
-        ds.tension = 0.32;
-        ds.borderWidth = 2;
+        ds.backgroundColor = tile.type === "area" ? color(tile, index, 0.16) : color(tile, index, 0.06);
+        ds.fill = tile.type === "area" ? "origin" : false;
+        ds.tension = 0.38;
+        ds.cubicInterpolationMode = "monotone";
+        ds.borderWidth = 2.25;
+        ds.pointRadius = 0;
+        ds.pointHoverRadius = 4;
+        ds.pointHitRadius = 12;
+        ds.spanGaps = true;
       } else if (tile.type === "donut") {
         ds.backgroundColor = data.labels.map(function (_, i) { return color(tile, i); });
         ds.borderColor = getComputedStyle(document.body).getPropertyValue("--surface").trim();
         ds.borderWidth = 2;
       } else {
-        ds.backgroundColor = color(tile, index, 0.86);
-        ds.borderRadius = 3;
-        ds.maxBarThickness = 48;
+        ds.backgroundColor = color(tile, index, 0.82);
+        ds.hoverBackgroundColor = color(tile, index, 0.96);
+        ds.borderRadius = 5;
+        ds.borderSkipped = false;
+        ds.maxBarThickness = 46;
+        ds.categoryPercentage = 0.72;
+        ds.barPercentage = 0.82;
       }
     });
   }
@@ -87,20 +184,18 @@
   function renderCanvas(el, dataset, tile) {
     var summary = IMK.Query.summarize(dataset, tile);
     if (!summary.labels.length) {
+      destroy(tile.id);
       el.innerHTML = "<div class='tile-empty'>" + IMK.i18n.t("emptyChart") + "</div>";
       return;
     }
-    var canvas = document.createElement("canvas");
-    el.appendChild(canvas);
     var data = { labels: summary.labels, datasets: summary.datasets };
     applyColors(tile, data);
     if (tile.type === "sbar") data.datasets.forEach(function (d) { d.stack = "s"; });
     var type = tile.type === "donut" ? "doughnut" : tile.type === "line" || tile.type === "area" ? "line" : "bar";
-    var options = chartOptions(tile, document.body.classList.contains("exporting") || summary.labels.length * data.datasets.length > C.ANIM_MAX_POINTS);
+    var options = chartOptions(tile, disableMotion(summary.labels.length * data.datasets.length));
     if (tile.type === "hbar") options.indexAxis = "y";
     if (tile.type === "sbar") { options.scales.x.stacked = true; options.scales.y.stacked = true; }
-    destroy(tile.id);
-    instances[tile.id] = new Chart(canvas, { type: type, data: data, options: options });
+    upsertChart(el, tile, { type: type, data: data, options: options });
   }
 
   function renderScatter(el, dataset, tile) {
@@ -113,18 +208,26 @@
       groups[key] = groups[key] || [];
       groups[key].push({ x: Number(row[tile.dim]), y: Number(row[tile.measure]) });
     });
-    var canvas = document.createElement("canvas");
-    el.appendChild(canvas);
-    destroy(tile.id);
-    instances[tile.id] = new Chart(canvas, {
+    upsertChart(el, tile, {
       type: "scatter",
-      data: { datasets: Object.keys(groups).map(function (key, index) { return { label: key, data: groups[key], backgroundColor: color(tile, index, 0.72), pointRadius: 3 }; }) },
+      data: { datasets: Object.keys(groups).map(function (key, index) { return { label: key, data: groups[key], backgroundColor: color(tile, index, 0.64), borderColor: color(tile, index), borderWidth: 1, pointRadius: 3, pointHoverRadius: 5 }; }) },
       options: (function () {
-        var options = chartOptions(tile, rows.length > C.ANIM_MAX_POINTS);
+        var options = chartOptions(tile, disableMotion(rows.length));
         options.plugins.legend.display = !!tile.series;
         return options;
       })()
     });
+  }
+
+  function renderMap(el, dataset, tile) {
+    var mapConfig = IMK.Map.config(dataset, tile, disableMotion(177));
+    if (!mapConfig.prepared.matched.length) {
+      destroy(tile.id);
+      var details = mapConfig.prepared.unmatched.slice(0, 5).map(function (item) { return IMK.escape(item.label); }).join(", ");
+      el.innerHTML = "<div class='tile-empty map-empty'><div><strong>" + IMK.i18n.t("mapNoMatches") + "</strong>" + (details ? "<small>" + details + "</small>" : "") + "</div></div>";
+      return;
+    }
+    upsertChart(el, tile, mapConfig.chart, "map", IMK.Map.statusMarkup(mapConfig.prepared));
   }
 
   function renderTable(el, dataset, tile) {
@@ -163,17 +266,22 @@
 
   IMK.Charts = {
     render: function (el, dataset, tile) {
-      destroy(tile.id);
-      el.innerHTML = "";
-      if (!dataset) { el.innerHTML = "<div class='tile-empty'>" + IMK.i18n.t("noData") + "</div>"; return; }
-      if (tile.type === "text") { el.innerHTML = "<div class='note-tile'>" + IMK.escape(tile.text || "Insight") + "</div>"; return; }
-      if (tile.type === "kpi") return renderKpi(el, dataset, tile);
-      if (tile.type === "table") return renderTable(el, dataset, tile);
-      if (tile.type === "matrix") return renderMatrix(el, dataset, tile);
+      if (!dataset) { destroy(tile.id); el.innerHTML = "<div class='tile-empty'>" + IMK.i18n.t("noData") + "</div>"; return; }
+      if (tile.type === "text") { destroy(tile.id); el.innerHTML = "<div class='note-tile'>" + IMK.escape(tile.text || "Insight") + "</div>"; return; }
+      if (tile.type === "kpi") { destroy(tile.id); return renderKpi(el, dataset, tile); }
+      if (tile.type === "table") { destroy(tile.id); return renderTable(el, dataset, tile); }
+      if (tile.type === "matrix") { destroy(tile.id); return renderMatrix(el, dataset, tile); }
+      if (tile.type === "map") return renderMap(el, dataset, tile);
       if (tile.type === "scatter") return renderScatter(el, dataset, tile);
       return renderCanvas(el, dataset, tile);
     },
     destroy: destroy,
+    detachAll: detachAll,
+    prune: prune,
+    resizeAll: resizeAll,
+    reducedMotion: reducedMotion,
     instances: instances
   };
+
+  if (window.addEventListener) window.addEventListener("resize", resizeAll);
 })();

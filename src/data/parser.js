@@ -45,12 +45,39 @@
     });
   }
 
-  function workbookToRows(workbook, sheetName) {
-    var rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null, raw: true });
+  function previewSheet(workbook, sheetName, limit) {
+    return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      header: 1,
+      defval: "",
+      raw: true,
+      // Keep blank rows so preview row numbers map exactly to XLSX range offsets.
+      blankrows: true,
+      range: 0
+    }).slice(0, limit || 30);
+  }
+
+  function suggestedHeaderRow(preview) {
+    var best = { index: 0, score: -Infinity };
+    preview.slice(0, 20).forEach(function (row, index) {
+      var values = row.map(function (value) { return value == null ? "" : String(value).trim(); });
+      var nonEmpty = values.filter(Boolean);
+      if (nonEmpty.length < 2) return;
+      var unique = new Set(nonEmpty.map(function (value) { return value.toLowerCase(); })).size;
+      var text = nonEmpty.filter(function (value) { return Number.isNaN(Number(value.replace(/[,%\s]/g, ""))); }).length;
+      var next = preview[index + 1] || [];
+      var nextNonEmpty = next.filter(function (value) { return value !== null && value !== undefined && value !== ""; }).length;
+      var score = nonEmpty.length * 2 + unique + text * 0.7 + (nextNonEmpty >= Math.max(2, nonEmpty.length * 0.5) ? 4 : 0) - index * 0.12;
+      if (score > best.score) best = { index: index, score: score };
+    });
+    return best.index;
+  }
+
+  function workbookToRows(workbook, sheetName, headerRow) {
+    var rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null, raw: true, range: headerRow || 0 });
     rows = rows.filter(function (row) {
       return Object.keys(row).some(function (key) { return row[key] !== null && row[key] !== undefined && row[key] !== ""; });
     });
-    if (!rows.length) throw new Error("Sheet is empty");
+    if (!rows.length) throw new Error(IMK.i18n.t("sheetEmpty"));
     var keys = {};
     Object.keys(rows[0]).forEach(function (k) { keys[k] = String(k).trim(); });
     return rows.map(function (row) {
@@ -63,10 +90,11 @@
     });
   }
 
-  function parseFile(file, sheetResolver) {
+  function parseFile(file, sheetResolver, options) {
+    options = options || {};
     return new Promise(function (resolve, reject) {
       var reader = new FileReader();
-      reader.onerror = function () { reject(new Error("Cannot read file")); };
+      reader.onerror = function () { reject(new Error(IMK.i18n.t("fileReadFailed"))); };
       reader.onload = async function (event) {
         try {
           var wb = XLSX.read(new Uint8Array(event.target.result), { type: "array", cellDates: true });
@@ -75,10 +103,27 @@
             if (!ref) return false;
             return XLSX.utils.decode_range(ref).e.r > 0;
           });
-          if (!sheets.length) throw new Error("No data sheet found");
-          var sheet = sheets.length > 1 && sheetResolver ? await sheetResolver(file.name, sheets) : sheets[0];
-          var rows = workbookToRows(wb, sheet);
-          resolve({ name: file.name, sheetName: sheet, rows: rows, columns: inferColumns(rows) });
+          if (!sheets.length) throw new Error(IMK.i18n.t("noDataSheet"));
+          var candidates = sheets.map(function (name) {
+            var preview = previewSheet(wb, name, 30);
+            return {
+              name: name,
+              preview: preview,
+              suggestedHeaderRow: suggestedHeaderRow(preview),
+              rowCount: Math.max(0, XLSX.utils.decode_range(wb.Sheets[name]["!ref"]).e.r)
+            };
+          });
+          var needsReview = options.review || candidates.length > 1 || candidates.some(function (candidate) { return candidate.suggestedHeaderRow > 0; });
+          var selections = needsReview && sheetResolver
+            ? await sheetResolver(file.name, candidates)
+            : [{ sheetName: candidates[0].name, headerRow: candidates[0].suggestedHeaderRow }];
+          if (!selections || !selections.length) throw new DOMException("Cancelled", "AbortError");
+          var parsed = selections.map(function (selection) {
+            var rows = workbookToRows(wb, selection.sheetName, selection.headerRow);
+            var sourceName = selections.length > 1 ? file.name + " / " + selection.sheetName : file.name;
+            return { name: sourceName, sheetName: selection.sheetName, headerRow: selection.headerRow, rows: rows, columns: inferColumns(rows) };
+          });
+          resolve(parsed);
         } catch (err) {
           reject(err);
         }
@@ -87,5 +132,5 @@
     });
   }
 
-  IMK.Parser = { parseFile: parseFile, inferColumns: inferColumns, toDate: toDate };
+  IMK.Parser = { parseFile: parseFile, inferColumns: inferColumns, toDate: toDate, previewSheet: previewSheet, suggestedHeaderRow: suggestedHeaderRow };
 })();
